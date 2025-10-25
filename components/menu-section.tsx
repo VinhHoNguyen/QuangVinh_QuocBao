@@ -95,40 +95,44 @@ type MenuSectionProps = {
 
 export function MenuSection({ onAddToCart }: MenuSectionProps) {
   return (
-    <section id="menu" className="py-16">
+    <section id="menu" className="py-12 md:py-16">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold mb-4">Thực đơn đặc biệt</h2>
-          <p className="text-muted-foreground text-lg">Những món ăn được yêu thích nhất</p>
+        <div className="text-center mb-8 md:mb-12">
+          <h2 className="text-2xl md:text-4xl font-bold mb-2 md:mb-4">Thực đơn đặc biệt</h2>
+          <p className="text-muted-foreground text-base md:text-lg">Những món ăn được yêu thích nhất</p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {menuItems.map((item) => (
-            <Card key={item.id} className="group overflow-hidden hover:shadow-lg transition-shadow">
+            <Card key={item.id} className="group overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
               <div className="relative overflow-hidden">
                 <img
                   src={item.image || "/placeholder.svg"}
                   alt={item.name}
-                  className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
+                  className="w-full h-40 md:h-48 object-cover group-hover:scale-110 transition-transform duration-300"
                 />
-                <div className="absolute top-3 right-3 bg-card/95 backdrop-blur px-2 py-1 rounded-full flex items-center gap-1">
+                <div className="absolute top-2 md:top-3 right-2 md:right-3 bg-card/95 backdrop-blur px-2 py-1 rounded-full flex items-center gap-1">
                   <Star className="w-3 h-3 fill-accent text-accent" />
                   <span className="text-xs font-semibold">{item.rating}</span>
                 </div>
               </div>
-              <CardContent className="p-4">
+              <CardContent className="p-3 md:p-4 flex-1 flex flex-col">
                 <div className="mb-2">
                   <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded">
                     {item.category}
                   </span>
                 </div>
-                <h3 className="font-bold text-lg mb-2 text-balance">{item.name}</h3>
-                <p className="text-sm text-muted-foreground mb-4 text-pretty">{item.description}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-xl font-bold text-primary">{item.price.toLocaleString("vi-VN")}đ</span>
+                <h3 className="font-bold text-base md:text-lg mb-1 md:mb-2 text-balance line-clamp-2">{item.name}</h3>
+                <p className="text-xs md:text-sm text-muted-foreground mb-3 md:mb-4 text-pretty line-clamp-2 flex-1">
+                  {item.description}
+                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-lg md:text-xl font-bold text-primary">
+                    {item.price.toLocaleString("vi-VN")}đ
+                  </span>
                   <Button
                     size="sm"
-                    className="gap-1"
+                    className="gap-1 flex-shrink-0"
                     onClick={() =>
                       onAddToCart({
                         id: item.id,
@@ -139,7 +143,7 @@ export function MenuSection({ onAddToCart }: MenuSectionProps) {
                     }
                   >
                     <Plus className="w-4 h-4" />
-                    Thêm
+                    <span className="hidden sm:inline">Thêm</span>
                   </Button>
                 </div>
               </CardContent>
