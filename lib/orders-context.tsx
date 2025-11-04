@@ -33,7 +33,7 @@ type OrdersContextType = {
   updateOrderStatus: (id: string, status: Order["status"]) => void
 }
 
-const OrdersContext = createContext<OrdersContextType | undefined>(undefined)
+export const OrdersContext = createContext<OrdersContextType | undefined>(undefined)
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([])

@@ -3,6 +3,7 @@
 import { ShoppingCart, User, Search, Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import Link from "next/link"
 import { useState } from "react"
 
 type HeaderProps = {
@@ -17,20 +18,22 @@ export function Header({ cartCount, onCartClick }: HeaderProps) {
     <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-4 md:gap-8">
-          <h1 className="text-xl md:text-2xl font-bold text-primary">FastFood</h1>
+          <Link href="/">
+            <h1 className="text-xl md:text-2xl font-bold text-primary hover:opacity-80 transition-opacity">FastFood</h1>
+          </Link>
           <nav className="hidden md:flex items-center gap-6">
-            <a href="#" className="text-sm font-medium hover:text-primary transition-colors">
+            <Link href="/" className="text-sm font-medium hover:text-primary transition-colors">
               Trang chủ
-            </a>
-            <a href="#menu" className="text-sm font-medium hover:text-primary transition-colors">
+            </Link>
+            <Link href="/menu" className="text-sm font-medium hover:text-primary transition-colors">
               Thực đơn
-            </a>
-            <a href="#" className="text-sm font-medium hover:text-primary transition-colors">
-              Khuyến mãi
-            </a>
-            <a href="#" className="text-sm font-medium hover:text-primary transition-colors">
-              Liên hệ
-            </a>
+            </Link>
+            <Link href="/restaurants" className="text-sm font-medium hover:text-primary transition-colors">
+              Nhà Hàng
+            </Link>
+            <Link href="/order-history" className="text-sm font-medium hover:text-primary transition-colors">
+              Đơn Hàng
+            </Link>
           </nav>
         </div>
 
@@ -39,9 +42,11 @@ export function Header({ cartCount, onCartClick }: HeaderProps) {
             <Search className="w-4 h-4 text-muted-foreground" />
             <Input type="search" placeholder="Tìm món ăn..." className="w-64" />
           </div>
-          <Button variant="ghost" size="icon" className="hidden sm:flex">
-            <User className="w-5 h-5" />
-          </Button>
+          <Link href="/profile">
+            <Button variant="ghost" size="icon" className="hidden sm:flex">
+              <User className="w-5 h-5" />
+            </Button>
+          </Link>
           <Button variant="ghost" size="icon" className="relative" onClick={onCartClick}>
             <ShoppingCart className="w-5 h-5" />
             {cartCount > 0 && (
@@ -59,18 +64,41 @@ export function Header({ cartCount, onCartClick }: HeaderProps) {
       {isMenuOpen && (
         <div className="md:hidden border-t bg-card">
           <nav className="container mx-auto px-4 py-4 flex flex-col gap-3">
-            <a href="#" className="text-sm font-medium hover:text-primary transition-colors py-2">
+            <Link
+              href="/"
+              className="text-sm font-medium hover:text-primary transition-colors py-2"
+              onClick={() => setIsMenuOpen(false)}
+            >
               Trang chủ
-            </a>
-            <a href="#menu" className="text-sm font-medium hover:text-primary transition-colors py-2">
+            </Link>
+            <Link
+              href="/menu"
+              className="text-sm font-medium hover:text-primary transition-colors py-2"
+              onClick={() => setIsMenuOpen(false)}
+            >
               Thực đơn
-            </a>
-            <a href="#" className="text-sm font-medium hover:text-primary transition-colors py-2">
-              Khuyến mãi
-            </a>
-            <a href="#" className="text-sm font-medium hover:text-primary transition-colors py-2">
-              Liên hệ
-            </a>
+            </Link>
+            <Link
+              href="/restaurants"
+              className="text-sm font-medium hover:text-primary transition-colors py-2"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Nhà Hàng
+            </Link>
+            <Link
+              href="/order-history"
+              className="text-sm font-medium hover:text-primary transition-colors py-2"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Đơn Hàng
+            </Link>
+            <Link
+              href="/profile"
+              className="text-sm font-medium hover:text-primary transition-colors py-2"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Hồ Sơ
+            </Link>
             <div className="flex items-center gap-2 pt-2 border-t">
               <Search className="w-4 h-4 text-muted-foreground" />
               <Input type="search" placeholder="Tìm món ăn..." className="flex-1" />
