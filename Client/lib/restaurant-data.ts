@@ -10,7 +10,6 @@ export interface Restaurant {
   categories: string[]
   isFeatured?: boolean
   isFavorite?: boolean
-  isOpen?: boolean
   latitude?: number
   longitude?: number
   distance?: number
@@ -43,7 +42,6 @@ export const restaurants: Restaurant[] = [
     minOrder: 50000,
     categories: ["Bún & Cơm", "Đặc Biệt"],
     isFeatured: true,
-    isOpen: true,
     latitude: 21.0285,
     longitude: 105.8542,
     distance: 2.3,
@@ -59,7 +57,6 @@ export const restaurants: Restaurant[] = [
     minOrder: 40000,
     categories: ["Bánh & Bánh Mì"],
     isFavorite: true,
-    isOpen: true,
     latitude: 21.0297,
     longitude: 105.8549,
     distance: 1.8,
@@ -76,7 +73,6 @@ export const restaurants: Restaurant[] = [
     categories: ["Bún & Cơm"],
     isFeatured: true,
     isFavorite: true,
-    isOpen: true,
     latitude: 21.0275,
     longitude: 105.8535,
     distance: 3.1,
@@ -91,7 +87,6 @@ export const restaurants: Restaurant[] = [
     deliveryFee: 10000,
     minOrder: 30000,
     categories: ["Đặc Biệt"],
-    isOpen: false,
     latitude: 21.0302,
     longitude: 105.8556,
     distance: 2.9,
@@ -107,7 +102,6 @@ export const restaurants: Restaurant[] = [
     minOrder: 50000,
     categories: ["Bánh & Bánh Mì"],
     isFavorite: true,
-    isOpen: true,
     latitude: 21.0288,
     longitude: 105.8543,
     distance: 1.5,
@@ -122,7 +116,6 @@ export const restaurants: Restaurant[] = [
     deliveryFee: 12000,
     minOrder: 50000,
     categories: ["Bún & Cơm"],
-    isOpen: true,
     latitude: 21.028,
     longitude: 105.854,
     distance: 2.1,

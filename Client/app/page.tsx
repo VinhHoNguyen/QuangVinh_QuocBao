@@ -3,20 +3,17 @@
 import { useState, useMemo } from "react"
 import {
   ShoppingCart,
-  MapPin,
   Star,
   TrendingUp,
   ShoppingBag,
   LogOut,
   UserIcon,
-  Search,
   Phone,
   Mail,
   Facebook,
   Instagram,
   Twitter,
   Heart,
-  Clock,
   Navigation,
   Crown,
 } from "lucide-react"
@@ -26,6 +23,8 @@ import { useOrder } from "@/lib/order-context"
 import { useAuth } from "@/lib/auth-context"
 import { AuthModal } from "@/components/auth-modal"
 import { restaurants } from "@/lib/restaurant-data"
+import { SearchModal } from "@/components/search-modal"
+import { HeaderSearch } from "@/components/header-search"
 
 interface MenuItem {
   id: string
@@ -128,6 +127,7 @@ const menuItems: MenuItem[] = [
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [searchModalOpen, setSearchModalOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [sortBy, setSortBy] = useState<"rating" | "price-asc" | "price-desc" | "trending">("trending")
   const [visibleCount, setVisibleCount] = useState(6)
@@ -135,7 +135,6 @@ export default function Home() {
 
   const [showFavorites, setShowFavorites] = useState(false)
   const [showFeatured, setShowFeatured] = useState(false)
-  const [showOpenNow, setShowOpenNow] = useState(false)
   const [showNearMe, setShowNearMe] = useState(false)
 
   const { cart, addToCart } = useOrder()
@@ -188,10 +187,6 @@ export default function Home() {
       result = result.filter((r) => r.isFeatured)
     }
 
-    if (showOpenNow) {
-      result = result.filter((r) => r.isOpen)
-    }
-
     if (showNearMe) {
       result = result.sort((a, b) => (a.distance || 999) - (b.distance || 999))
     } else {
@@ -199,7 +194,7 @@ export default function Home() {
     }
 
     return result
-  }, [showFavorites, showFeatured, showOpenNow, showNearMe])
+  }, [showFavorites, showFeatured, showNearMe])
 
   const visibleItems = filteredAndSorted.slice(0, visibleCount)
 
@@ -216,15 +211,15 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background border-b border-border shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          <Link href="/" className="flex items-center gap-2 flex-shrink-0">
             <h1 className="text-xl font-bold text-primary">FoodFast</h1>
           </Link>
-          <div className="hidden md:flex items-center gap-3">
-            
-            
+
+          <div className="hidden md:flex flex-1 max-w-md">
+            <HeaderSearch />
           </div>
+
           <div className="flex items-center gap-3">
             {user ? (
               <div className="flex items-center gap-2">
@@ -284,6 +279,11 @@ export default function Home() {
             )}
           </div>
         </div>
+
+        {/* Mobile search */}
+        <div className="md:hidden px-4 pb-3">
+          <HeaderSearch />
+        </div>
       </header>
 
       {/* Hero Section */}
@@ -321,30 +321,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Search bar */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              
-              
-            </div>
-            <div className="flex gap-3">
-              <div className="flex-1 bg-white rounded-lg flex items-center px-4 py-3 shadow-lg">
-                <Search className="w-5 h-5 text-muted-foreground mr-3" />
-                <input
-                  type="text"
-                  placeholder="Tìm nhà hàng, món ăn..."
-                  className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <Button
-                size="lg"
-                className="bg-accent hover:bg-accent/90 text-accent-foreground px-8 font-semibold shadow-lg"
-              >
-                Tìm kiếm
-              </Button>
-            </div>
+            <div className="flex items-center gap-2"></div>
           </div>
         </div>
       </section>
@@ -368,14 +346,6 @@ export default function Home() {
             >
               <Crown className="w-4 h-4" />
               Quán đối tác chính
-            </Button>
-            <Button
-              variant={showOpenNow ? "default" : "outline"}
-              onClick={() => setShowOpenNow(!showOpenNow)}
-              className="gap-2"
-            >
-              <Clock className="w-4 h-4" />
-              Mở cửa hiện tại
             </Button>
             <Button
               variant={showNearMe ? "default" : "outline"}
@@ -415,11 +385,6 @@ export default function Home() {
                       alt={restaurant.name}
                       className="w-full h-full object-cover hover:scale-105 transition-transform"
                     />
-                    {!restaurant.isOpen && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <span className="text-white font-semibold">Đóng cửa</span>
-                      </div>
-                    )}
                     {restaurant.isFeatured && (
                       <div className="absolute top-2 right-2 bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
                         <Crown className="w-3 h-3" />
@@ -481,7 +446,6 @@ export default function Home() {
             {/* Brand */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                
                 <h3 className="font-bold text-xl">FoodFast</h3>
               </div>
               <p className="text-primary-foreground/95 text-sm leading-relaxed">
@@ -598,6 +562,9 @@ export default function Home() {
 
       {/* Auth Modal */}
       <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
+
+      {/* Search Modal */}
+      <SearchModal open={searchModalOpen} onOpenChange={setSearchModalOpen} />
 
       {/* Floating cart for small screens */}
       {user && cart.length > 0 && (
