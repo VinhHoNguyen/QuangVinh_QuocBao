@@ -1,3 +1,4 @@
+"use client"
 import { useOrder } from "@/lib/order-context"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
