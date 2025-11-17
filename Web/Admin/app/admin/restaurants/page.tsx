@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, Edit2, Eye, Check, X, AlertCircle, Pause } from "lucide-react"
+import { Plus, Edit2, Eye, Check, X, AlertCircle, Pause } from 'lucide-react'
 
 const initialRestaurants = [
   {
@@ -84,6 +84,8 @@ export default function RestaurantsPage() {
   const [activeTab, setActiveTab] = useState("Tất cả")
   const [selectedRestaurant, setSelectedRestaurant] = useState<(typeof restaurants)[0] | null>(null)
   const [showDetails, setShowDetails] = useState(false)
+  const [editingRestaurant, setEditingRestaurant] = useState<(typeof restaurants)[0] | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
 
   const filteredRestaurants = restaurants.filter((r) => {
     const matchesSearch = r.name.toLowerCase().includes(search.toLowerCase())
@@ -114,6 +116,25 @@ export default function RestaurantsPage() {
     setRestaurants(restaurants.map((r) => (r.id === id ? { ...r, status: "Hoạt động" } : r)))
   }
 
+  const handleEditRestaurant = (field: string, value: any) => {
+    if (editingRestaurant) {
+      setEditingRestaurant({ ...editingRestaurant, [field]: value })
+    }
+  }
+
+  const handleSaveEdit = () => {
+    if (editingRestaurant) {
+      setRestaurants(restaurants.map((r) => (r.id === editingRestaurant.id ? editingRestaurant : r)))
+      setShowEditModal(false)
+      setEditingRestaurant(null)
+    }
+  }
+
+  const openEditModal = (restaurant: typeof restaurants[0]) => {
+    setEditingRestaurant({ ...restaurant })
+    setShowEditModal(true)
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -121,10 +142,7 @@ export default function RestaurantsPage() {
           <h1 className="text-3xl font-bold text-foreground">Quản lý nhà hàng</h1>
           <p className="text-muted-foreground mt-1">Duyệt, quản lý menu, giám sát doanh thu và xử lý vi phạm</p>
         </div>
-        <Button className="gap-2 bg-primary hover:bg-primary/90">
-          <Plus size={18} />
-          Thêm nhà hàng
-        </Button>
+        
       </div>
 
       {/* Search */}
@@ -292,7 +310,12 @@ export default function RestaurantsPage() {
                 </Button>
               )}
 
-              <Button size="sm" variant="outline" className="gap-1 ml-auto bg-transparent">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1 ml-auto bg-transparent"
+                onClick={() => openEditModal(restaurant)}
+              >
                 <Edit2 size={16} />
                 Sửa
               </Button>
@@ -381,6 +404,98 @@ export default function RestaurantsPage() {
               <Button onClick={() => setShowDetails(false)} className="w-full bg-primary hover:bg-primary/90">
                 Đóng
               </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && editingRestaurant && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-8 space-y-6">
+              <div className="flex justify-between items-start">
+                <h2 className="text-2xl font-bold">Chỉnh sửa thông tin nhà hàng</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowEditModal(false)
+                    setEditingRestaurant(null)
+                  }}
+                  className="text-xl"
+                >
+                  ✕
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Tên nhà hàng</label>
+                  <Input
+                    value={editingRestaurant.name}
+                    onChange={(e) => handleEditRestaurant('name', e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Địa chỉ</label>
+                  <Input
+                    value={editingRestaurant.address}
+                    onChange={(e) => handleEditRestaurant('address', e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Email</label>
+                  <Input
+                    value={editingRestaurant.email}
+                    onChange={(e) => handleEditRestaurant('email', e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Số điện thoại</label>
+                  <Input
+                    value={editingRestaurant.contact}
+                    onChange={(e) => handleEditRestaurant('contact', e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Khoảng giá menu</label>
+                  <Input
+                    value={editingRestaurant.menu.priceRange}
+                    onChange={(e) =>
+                      handleEditRestaurant('menu', { ...editingRestaurant.menu, priceRange: e.target.value })
+                    }
+                    className="w-full"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t border-border">
+                <Button
+                  onClick={handleSaveEdit}
+                  className="flex-1 bg-primary hover:bg-primary/90"
+                >
+                  Lưu thay đổi
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowEditModal(false)
+                    setEditingRestaurant(null)
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Hủy
+                </Button>
+              </div>
             </div>
           </Card>
         </div>

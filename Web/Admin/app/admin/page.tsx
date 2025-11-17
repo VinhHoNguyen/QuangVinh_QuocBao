@@ -17,6 +17,9 @@ import {
   Area,
 } from "recharts"
 import { useState } from "react"
+import dynamic from "next/dynamic"
+
+const DroneMap = dynamic(() => import("@/components/drone-map").then(mod => mod.default), { ssr: false })
 
 const weeklyData = [
   { name: "T2", orders: 240, revenue: 2400, completed: 200, cancelled: 8 },
@@ -147,15 +150,7 @@ export default function AdminDashboard() {
         </div>
         <div className="flex gap-2">
           {(["day", "week", "month"] as const).map((period) => (
-            <button
-              key={period}
-              onClick={() => setTimePeriod(period)}
-              className={`px-4 py-2 rounded-lg font-sans text-sm transition-all ${
-                timePeriod === period ? "bg-primary text-white" : "bg-muted text-foreground hover:bg-muted/70"
-              }`}
-            >
-              {period === "day" ? "Hôm nay" : period === "week" ? "Tuần" : "Tháng"}
-            </button>
+            null
           ))}
         </div>
       </div>
@@ -295,7 +290,7 @@ export default function AdminDashboard() {
 
       {/* Alerts Section */}
       <Card className="p-6 border-l-4 border-l-destructive bg-destructive/5">
-        <h3 className="text-lg font-semibold text-foreground mb-4 font-sans">⚠️ Cảnh Báo & Sự Cố</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-4 font-sans"> Cảnh Báo &amp; Sự Cố</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {alertsData.map((alert) => (
             <div

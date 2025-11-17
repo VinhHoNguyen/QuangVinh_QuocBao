@@ -4,7 +4,10 @@ import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, Edit2, Eye, AlertTriangle, Wrench, MapPin, Battery } from "lucide-react"
+import { Plus, Edit2, Eye, AlertTriangle, Wrench, MapPin, Battery, Trash2 } from 'lucide-react'
+import dynamic from "next/dynamic"
+
+const DroneMap = dynamic(() => import("@/components/drone-map"), { ssr: false })
 
 const initialDrones = [
   {
@@ -19,6 +22,8 @@ const initialDrones = [
     nextMaintenance: "2024-11-15",
     flightHours: 245,
     incidents: 0,
+    heading: 45,
+    speed: 15,
   },
   {
     id: "DR002",
@@ -32,6 +37,8 @@ const initialDrones = [
     nextMaintenance: "2024-11-22",
     flightHours: 180,
     incidents: 0,
+    heading: 120,
+    speed: 18,
   },
   {
     id: "DR003",
@@ -45,6 +52,8 @@ const initialDrones = [
     nextMaintenance: "2024-12-01",
     flightHours: 312,
     incidents: 1,
+    heading: 0,
+    speed: 0,
   },
   {
     id: "DR004",
@@ -58,6 +67,8 @@ const initialDrones = [
     nextMaintenance: "2024-11-28",
     flightHours: 156,
     incidents: 0,
+    heading: 270,
+    speed: 12,
   },
   {
     id: "DR005",
@@ -71,6 +82,8 @@ const initialDrones = [
     nextMaintenance: "2024-11-15",
     flightHours: 298,
     incidents: 2,
+    heading: 180,
+    speed: 10,
   },
 ]
 
@@ -105,16 +118,99 @@ export default function DronesPage() {
   const [orders] = useState(initialOrders)
   const [activeTab, setActiveTab] = useState("list")
   const [selectedDrone, setSelectedDrone] = useState<(typeof initialDrones)[0] | null>(null)
+  const [editingDrone, setEditingDrone] = useState<(typeof initialDrones)[0] | null>(null)
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("Tất cả")
+  const [followDroneId, setFollowDroneId] = useState<string | null>(null)
+
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [newDrone, setNewDrone] = useState({
+    id: "",
+    model: "",
+    location: ""
+  })
+
+  const handleAddDrone = () => {
+    if (!newDrone.id || !newDrone.model) return
+
+    const id = newDrone.id.toUpperCase().trim()
+    if (!id.startsWith("DR")) {
+      alert("Mã drone phải bắt đầu bằng DR (VD: DR006)")
+      return
+    }
+    if (drones.some(d => d.id === id)) {
+      alert("Mã drone đã tồn tại!")
+      return
+    }
+
+    const droneToAdd: typeof initialDrones[0] = {
+      id,
+      model: newDrone.model,
+      status: "Hoạt động",
+      battery: 100,
+      location: newDrone.location || "Chưa xác định",
+      coordinates: null as any, // Không hiện trên bản đồ
+      payload: { current: 0, max: 3.0 },
+      lastMaintenance: new Date().toISOString().split('T')[0],
+      nextMaintenance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      flightHours: 0,
+      incidents: 0,
+      heading: 0,
+      speed: 0,
+    }
+
+    setDrones([...drones, droneToAdd])
+    setShowAddModal(false)
+    setNewDrone({ id: "", model: "", location: "" })
+  }
+  
+  const [editForm, setEditForm] = useState({
+    model: "",
+    location: "",
+    payloadMax: 0,
+  })
 
   const filteredDrones = drones.filter((drone) => {
     const matchesSearch = drone.id.includes(search) || drone.model.toLowerCase().includes(search.toLowerCase())
     const matchesStatus = statusFilter === "Tất cả" || drone.status === statusFilter
     return matchesSearch && matchesStatus
   })
+
+  const handleEditDrone = (drone: (typeof initialDrones)[0]) => {
+    setEditingDrone(drone)
+    setEditForm({
+      model: drone.model,
+      location: drone.location,
+      payloadMax: drone.payload.max,
+    })
+  }
+
+  const handleSaveDrone = () => {
+    if (!editingDrone) return
+    setDrones(
+      drones.map((d) =>
+        d.id === editingDrone.id
+          ? {
+              ...d,
+              model: editForm.model,
+              location: editForm.location,
+              payload: { ...d.payload, max: editForm.payloadMax },
+            }
+          : d
+      )
+    )
+    setEditingDrone(null)
+    setSelectedDrone(null)
+  }
+
+  const handleDeleteDrone = (droneId: string) => {
+    if (confirm("Bạn chắc chắn muốn xóa drone này?")) {
+      setDrones(drones.filter((d) => d.id !== droneId))
+      setSelectedDrone(null)
+    }
+  }
 
   const handleAssignOrder = (droneId: string, orderId: string) => {
     console.log(`[v0] Assigned order ${orderId} to drone ${droneId}`)
@@ -134,16 +230,75 @@ export default function DronesPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Quản lý Drone & Đội Vận Hành</h1>
           <p className="text-muted-foreground mt-1">Theo dõi, gán công việc và quản lý bảo trì drone</p>
         </div>
-        <Button className="gap-2 bg-primary hover:bg-primary/90">
+        <Button 
+          className="gap-2 bg-primary hover:bg-primary/90"
+          onClick={() => setShowAddModal(true)}
+        >
           <Plus size={18} />
           Thêm Drone
         </Button>
       </div>
+
+      {/* State cho modal thêm drone */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <div className="p-6 space-y-4">
+              <h2 className="text-2xl font-bold text-foreground">Thêm Drone Mới</h2>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Mã Drone</label>
+                  <Input 
+                    placeholder="VD: DR006" 
+                    value={newDrone.id}
+                    onChange={(e) => setNewDrone({ ...newDrone, id: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Model</label>
+                  <Input 
+                    placeholder="VD: DJI Mini 4 Pro"
+                    value={newDrone.model}
+                    onChange={(e) => setNewDrone({ ...newDrone, model: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Vị trí</label>
+                  <Input 
+                    placeholder="VD: Base D - Cầu Giấy"
+                    value={newDrone.location}
+                    onChange={(e) => setNewDrone({ ...newDrone, location: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-4 border-t border-border">
+                <Button 
+                  className="flex-1" 
+                  onClick={handleAddDrone}
+                  disabled={!newDrone.id || !newDrone.model}
+                >
+                  Thêm
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="flex-1 bg-transparent" 
+                  onClick={() => {
+                    setShowAddModal(false)
+                    setNewDrone({ id: "", model: "", location: "" })
+                  }}
+                >
+                  Hủy
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-2 border-b border-border">
@@ -235,7 +390,7 @@ export default function DronesPage() {
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Battery size={14} /> Pin
+                      🔋 Pin
                     </span>
                     <span className="text-sm font-semibold text-foreground">{drone.battery}%</span>
                   </div>
@@ -263,7 +418,7 @@ export default function DronesPage() {
 
                 {/* Location */}
                 <div className="text-sm flex items-start gap-2">
-                  <MapPin size={14} className="text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-primary mt-0.5 flex-shrink-0">📍</span>
                   <div>
                     <p className="text-muted-foreground text-xs">Vị trí</p>
                     <p className="text-foreground">{drone.location}</p>
@@ -273,7 +428,7 @@ export default function DronesPage() {
                 {/* Incidents */}
                 {drone.incidents > 0 && (
                   <div className="bg-red-50 p-2 rounded flex items-center gap-2">
-                    <AlertTriangle size={14} className="text-red-600" />
+                    <span className="text-red-600">⚠️</span>
                     <span className="text-xs text-red-700">{drone.incidents} sự cố</span>
                   </div>
                 )}
@@ -286,11 +441,23 @@ export default function DronesPage() {
                     className="flex-1 gap-1 bg-transparent"
                     onClick={() => setSelectedDrone(drone)}
                   >
-                    <Eye size={14} />
-                    Chi tiết
+                    👁️ Chi tiết
                   </Button>
-                  <Button size="sm" variant="outline" className="flex-1 gap-1 bg-transparent">
-                    <Edit2 size={14} />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 gap-1 bg-transparent"
+                    onClick={() => handleEditDrone(drone)}
+                  >
+                    ✎ Sửa
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 gap-1 bg-transparent text-red-600 hover:bg-red-50"
+                    onClick={() => handleDeleteDrone(drone.id)}
+                  >
+                    🗑️ Xóa
                   </Button>
                 </div>
               </Card>
@@ -301,22 +468,41 @@ export default function DronesPage() {
 
       {/* Tab: Bản đồ Thời gian thực */}
       {activeTab === "map" && (
-        <Card className="p-6">
-          <div className="bg-muted rounded-lg h-96 flex items-center justify-center mb-4">
-            <div className="text-center">
-              <MapPin size={48} className="text-muted-foreground mx-auto mb-2" />
-              <p className="text-muted-foreground">Bản đồ theo dõi thời gian thực (Google Maps Integration)</p>
+        <Card className="p-6 space-y-4">
+          <div className="flex gap-4 items-center flex-wrap">
+            <div className="flex-1 min-w-64">
+              <label className="block text-sm font-medium text-foreground mb-2">Theo dõi Drone</label>
+              <select
+                className="w-full px-4 py-2 border border-border rounded-lg bg-card text-foreground"
+                value={followDroneId || ""}
+                onChange={(e) => setFollowDroneId(e.target.value || null)}
+              >
+                <option value="">-- Chọn drone để theo dõi --</option>
+                {drones.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.id} - {d.model}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2 items-center">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setFollowDroneId(null)}
+                disabled={!followDroneId}
+              >
+                Dừng theo dõi
+              </Button>
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-            {filteredDrones.map((drone) => (
-              <div key={drone.id} className="bg-muted p-2 rounded text-sm">
-                <p className="font-semibold text-foreground">{drone.id}</p>
-                <p className="text-xs text-muted-foreground">
-                  Tọa độ: {drone.coordinates.lat.toFixed(4)}, {drone.coordinates.lng.toFixed(4)}
-                </p>
-              </div>
-            ))}
+
+          <div className="h-96 md:h-[600px] rounded-lg overflow-hidden border border-border">
+            <DroneMap
+              drones={drones}
+              followDroneId={followDroneId}
+              selectedDroneId={selectedDrone?.id}
+            />
           </div>
         </Card>
       )}
@@ -420,7 +606,7 @@ export default function DronesPage() {
           {/* Maintenance Schedule */}
           <Card className="p-4">
             <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-              <Wrench size={18} />
+              🔧
               Lịch bảo trì sắp tới
             </h3>
             <div className="space-y-2">
@@ -436,8 +622,7 @@ export default function DronesPage() {
                       <p className="text-sm text-muted-foreground">Bảo trì dự kiến: {drone.nextMaintenance}</p>
                     </div>
                     <Button size="sm" variant="outline">
-                      <Wrench size={14} className="mr-1" />
-                      Lên lịch
+                      🔧 Lên lịch
                     </Button>
                   </div>
                 ))}
@@ -447,7 +632,7 @@ export default function DronesPage() {
       )}
 
       {/* Detail Modal */}
-      {selectedDrone && (
+      {selectedDrone && !editingDrone && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-md max-h-96 overflow-y-auto">
             <div className="p-6 space-y-4">
@@ -504,15 +689,82 @@ export default function DronesPage() {
                     <p className="font-semibold text-foreground text-sm">{selectedDrone.nextMaintenance}</p>
                   </div>
                 </div>
+
+                <div className="p-3 bg-muted rounded">
+                  <p className="text-xs text-muted-foreground">Hướng bay</p>
+                  <p className="font-semibold text-foreground">{selectedDrone.heading}°</p>
+                </div>
+
+                <div className="p-3 bg-muted rounded">
+                  <p className="text-xs text-muted-foreground">Tốc độ</p>
+                  <p className="font-semibold text-foreground">{selectedDrone.speed} km/h</p>
+                </div>
               </div>
 
               <div className="flex gap-2 pt-4 border-t border-border">
                 <Button className="flex-1" onClick={() => setSelectedDrone(null)}>
                   Đóng
                 </Button>
-                <Button variant="outline" className="flex-1 bg-transparent">
-                  <Edit2 size={14} className="mr-1" />
-                  Sửa
+                <Button variant="outline" className="flex-1 bg-transparent" onClick={() => handleEditDrone(selectedDrone)}>
+                  ✎ Sửa
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingDrone && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <div className="p-6 space-y-4">
+              <div className="flex justify-between items-start">
+                <h2 className="text-2xl font-bold text-foreground">Sửa Drone {editingDrone.id}</h2>
+                <button
+                  onClick={() => setEditingDrone(null)}
+                  className="text-muted-foreground hover:text-foreground text-2xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Model</label>
+                  <Input
+                    value={editForm.model}
+                    onChange={(e) => setEditForm({ ...editForm, model: e.target.value })}
+                    placeholder="VD: DJI Matrice 300 RTK"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Vị trí</label>
+                  <Input
+                    value={editForm.location}
+                    onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                    placeholder="VD: Base A - Hà Nội"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Tải trọng tối đa (kg)</label>
+                  <Input
+                    type="number"
+                    value={editForm.payloadMax}
+                    onChange={(e) => setEditForm({ ...editForm, payloadMax: parseFloat(e.target.value) })}
+                    placeholder="VD: 5.5"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t border-border">
+                <Button className="flex-1" onClick={handleSaveDrone}>
+                  Lưu
+                </Button>
+                <Button variant="outline" className="flex-1 bg-transparent" onClick={() => setEditingDrone(null)}>
+                  Hủy
                 </Button>
               </div>
             </div>

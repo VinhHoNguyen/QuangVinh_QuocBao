@@ -166,7 +166,7 @@ export default function SupportPage() {
       </div>
 
       <div className="grid grid-cols-4 gap-4">
-        <Card className="p-4">
+        <Card className="p-4 mx-3.5">
           <p className="text-sm text-muted-foreground">Tổng phản hồi</p>
           <p className="text-2xl font-bold text-foreground">{mockFeedback.length}</p>
         </Card>
@@ -176,18 +176,13 @@ export default function SupportPage() {
             {mockFeedback.filter((f) => f.status === "Chờ xử lý").length}
           </p>
         </Card>
-        <Card className="p-4">
+        <Card className="p-4 border-0">
           <p className="text-sm text-muted-foreground">Đã xử lý</p>
           <p className="text-2xl font-bold text-green-600">
             {mockFeedback.filter((f) => f.status === "Đã xử lý").length}
           </p>
         </Card>
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Đánh giá trung bình</p>
-          <p className="text-2xl font-bold text-foreground">
-            {(mockFeedback.reduce((sum, f) => sum + f.rating, 0) / mockFeedback.length).toFixed(1)}⭐
-          </p>
-        </Card>
+        
       </div>
 
       <div className="grid grid-cols-3 gap-6">
