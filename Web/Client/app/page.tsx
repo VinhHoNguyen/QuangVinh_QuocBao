@@ -25,105 +25,7 @@ import { AuthModal } from "@/components/auth-modal"
 import { useRestaurants, useProducts } from "@/lib/hooks"
 import { SearchModal } from "@/components/search-modal"
 import { HeaderSearch } from "@/components/header-search"
-
-interface MenuItem {
-  id: string
-  name: string
-  category: string
-  price: number
-  originalPrice?: number
-  rating: number
-  reviews: number
-  image: string
-  discount?: number
-  badge?: string
-}
-
-const menuItems: MenuItem[] = [
-  {
-    id: "1",
-    name: "Bún Chả Hà Nội",
-    category: "Bún & Cơm",
-    price: 45000,
-    originalPrice: 55000,
-    rating: 4.8,
-    reviews: 342,
-    image: "/vietnamese-pork-grilled-with-rice-noodles.jpg",
-    discount: 18,
-    badge: "Bestseller",
-  },
-  {
-    id: "2",
-    name: "Bánh Mì Thập Cẩm",
-    category: "Bánh & Bánh Mì",
-    price: 28000,
-    rating: 4.7,
-    reviews: 256,
-    image: "/vietnamese-sandwich-with-pork-p-t-.jpg",
-    badge: "Bestseller",
-  },
-  {
-    id: "3",
-    name: "Cơm Tấm Sườn Nướng",
-    category: "Bún & Cơm",
-    price: 52000,
-    originalPrice: 65000,
-    rating: 4.9,
-    reviews: 418,
-    image: "/vietnamese-grilled-pork-chop-rice.jpg",
-    discount: 20,
-  },
-  {
-    id: "4",
-    name: "Tàu Hủ Non Chiên",
-    category: "Đặc Biệt",
-    price: 35000,
-    rating: 4.6,
-    reviews: 189,
-    image: "/vietnamese-fried-tofu.jpg",
-  },
-  {
-    id: "5",
-    name: "Bánh Xèo Hải Phòng",
-    category: "Bánh & Bánh Mì",
-    price: 38000,
-    rating: 4.8,
-    reviews: 301,
-    image: "/vietnamese-sizzling-crepe.jpg",
-    badge: "Hot",
-  },
-  {
-    id: "6",
-    name: "Bún Thang Gà",
-    category: "Bún & Cơm",
-    price: 42000,
-    originalPrice: 50000,
-    rating: 4.7,
-    reviews: 267,
-    image: "/vietnamese-chicken-noodle-soup.jpg",
-    discount: 16,
-  },
-  {
-    id: "7",
-    name: "Phở Bò Truyền Thống",
-    category: "Bún & Cơm",
-    price: 48000,
-    rating: 4.9,
-    reviews: 502,
-    image: "/vietnamese-beef-pho-soup.jpg",
-  },
-  {
-    id: "8",
-    name: "Gà Nướng Vàng",
-    category: "Gà & Thịt",
-    price: 65000,
-    originalPrice: 80000,
-    rating: 4.8,
-    reviews: 289,
-    image: "/vietnamese-grilled-yellow-chicken.jpg",
-    discount: 19,
-  },
-]
+import type { Dish } from "@/lib/restaurant-data"
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -140,16 +42,20 @@ export default function Home() {
   const { cart, addToCart } = useOrder()
   const { user, logout } = useAuth()
   
-  // Fetch real data from backend
+  // Fetch real data from backend API
   const { restaurants, loading: restaurantsLoading } = useRestaurants("active")
-  const { products: menuItems, loading: productsLoading } = useProducts({ available: true })
+  const { products: allProducts, loading: productsLoading } = useProducts({ available: true })
 
-  const categories = ["Tất cả", "Bún & Cơm", "Bánh & Bánh Mì", "Gà & Thịt", "Đặc Biệt"]
+  // Get unique categories from products
+  const categories = useMemo(() => {
+    const cats = new Set(allProducts.map(p => p.category))
+    return ["Tất cả", ...Array.from(cats)]
+  }, [allProducts])
 
   const filteredAndSorted = useMemo(() => {
-    let result = menuItems
+    let result = allProducts
 
-    if (selectedCategory !== "all") {
+    if (selectedCategory !== "all" && selectedCategory !== "Tất cả") {
       result = result.filter((item) => item.category === selectedCategory)
     }
 
@@ -178,7 +84,7 @@ export default function Home() {
     }
 
     return sorted
-  }, [searchQuery, selectedCategory, sortBy])
+  }, [allProducts, searchQuery, selectedCategory, sortBy])
 
   const filteredRestaurants = useMemo(() => {
     let result = [...restaurants]
@@ -198,11 +104,11 @@ export default function Home() {
     }
 
     return result
-  }, [showFavorites, showFeatured, showNearMe])
+  }, [restaurants, showFavorites, showFeatured, showNearMe])
 
   const visibleItems = filteredAndSorted.slice(0, visibleCount)
 
-  const handleAddToCart = (item: MenuItem) => {
+  const handleAddToCart = (item: Dish) => {
     addToCart({
       id: item.id,
       name: item.name,
@@ -377,7 +283,21 @@ export default function Home() {
           </h2>
         </div>
 
-        {filteredRestaurants.length > 0 ? (
+        {restaurantsLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="bg-card rounded-lg overflow-hidden shadow-md border border-border/50 h-full animate-pulse">
+                <div className="h-48 bg-muted"></div>
+                <div className="p-4 space-y-3">
+                  <div className="h-6 bg-muted rounded w-3/4"></div>
+                  <div className="h-4 bg-muted rounded w-1/2"></div>
+                  <div className="h-4 bg-muted rounded w-2/3"></div>
+                  <div className="h-10 bg-muted rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredRestaurants.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredRestaurants.map((restaurant) => (
               <Link key={restaurant.id} href={`/restaurant/${restaurant.id}`}>

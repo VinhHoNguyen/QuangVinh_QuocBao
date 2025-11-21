@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "start-all": "concurrently \"npm run backend\" \"npm run client\"",
+    "backend": "cd ../../Backend && npm run dev",
+    "client": "npm run dev",
+    "setup": "node scripts/setup.js"
+  }
+}

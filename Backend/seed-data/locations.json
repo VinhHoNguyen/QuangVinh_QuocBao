@@ -1,0 +1,34 @@
+[
+  {
+    "type": "restaurant",
+    "coords": {
+      "latitude": 10.762622,
+      "longitude": 106.660172
+    },
+    "address": "123 Nguyen Hue, District 1, Ho Chi Minh City"
+  },
+  {
+    "type": "restaurant",
+    "coords": {
+      "latitude": 10.773996,
+      "longitude": 106.700981
+    },
+    "address": "456 Vo Van Tan, District 3, Ho Chi Minh City"
+  },
+  {
+    "type": "restaurant",
+    "coords": {
+      "latitude": 10.799474,
+      "longitude": 106.664548
+    },
+    "address": "789 Truong Chinh, Tan Binh, Ho Chi Minh City"
+  },
+  {
+    "type": "drone_station",
+    "coords": {
+      "latitude": 10.78,
+      "longitude": 106.69
+    },
+    "address": "Main Drone Station, Ho Chi Minh City"
+  }
+]

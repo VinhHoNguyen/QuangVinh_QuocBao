@@ -1,0 +1,52 @@
+[
+  {
+    "email": "admin@fooddelivery.com",
+    "name": "System Admin",
+    "password": "$2a$10$XQq7Z8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5Y",
+    "phone": "0123456789",
+    "role": "admin",
+    "status": "active",
+    "createdAt": {"$date": "2024-01-01T00:00:00.000Z"},
+    "updatedAt": {"$date": "2024-01-01T00:00:00.000Z"}
+  },
+  {
+    "email": "owner1@restaurant.com",
+    "name": "Nguyen Van A",
+    "password": "$2a$10$XQq7Z8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5Y",
+    "phone": "0987654321",
+    "role": "restaurant_owner",
+    "status": "active",
+    "createdAt": {"$date": "2024-01-01T00:00:00.000Z"},
+    "updatedAt": {"$date": "2024-01-01T00:00:00.000Z"}
+  },
+  {
+    "email": "owner2@restaurant.com",
+    "name": "Tran Thi B",
+    "password": "$2a$10$XQq7Z8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5Y",
+    "phone": "0976543210",
+    "role": "restaurant_owner",
+    "status": "active",
+    "createdAt": {"$date": "2024-01-01T00:00:00.000Z"},
+    "updatedAt": {"$date": "2024-01-01T00:00:00.000Z"}
+  },
+  {
+    "email": "customer1@gmail.com",
+    "name": "Le Van C",
+    "password": "$2a$10$XQq7Z8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5Y",
+    "phone": "0965432109",
+    "role": "customer",
+    "status": "active",
+    "createdAt": {"$date": "2024-01-01T00:00:00.000Z"},
+    "updatedAt": {"$date": "2024-01-01T00:00:00.000Z"}
+  },
+  {
+    "email": "customer2@gmail.com",
+    "name": "Pham Thi D",
+    "password": "$2a$10$XQq7Z8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5Y",
+    "phone": "0954321098",
+    "role": "customer",
+    "status": "active",
+    "createdAt": {"$date": "2024-01-01T00:00:00.000Z"},
+    "updatedAt": {"$date": "2024-01-01T00:00:00.000Z"}
+  }
+]

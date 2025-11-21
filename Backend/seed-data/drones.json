@@ -1,0 +1,46 @@
+[
+  {
+    "code": "DRONE-001",
+    "name": "Sky Hawk 1",
+    "capacity": 5,
+    "battery": 100,
+    "currentLoad": 0,
+    "status": "available",
+    "currentLocationId": "DRONE_STATION_ID",
+    "createdAt": {"$date": "2024-01-01T00:00:00.000Z"},
+    "updatedAt": {"$date": "2024-01-01T00:00:00.000Z"}
+  },
+  {
+    "code": "DRONE-002",
+    "name": "Sky Hawk 2",
+    "capacity": 5,
+    "battery": 85,
+    "currentLoad": 0,
+    "status": "available",
+    "currentLocationId": "DRONE_STATION_ID",
+    "createdAt": {"$date": "2024-01-01T00:00:00.000Z"},
+    "updatedAt": {"$date": "2024-01-01T00:00:00.000Z"}
+  },
+  {
+    "code": "DRONE-003",
+    "name": "Sky Hawk 3",
+    "capacity": 10,
+    "battery": 100,
+    "currentLoad": 0,
+    "status": "available",
+    "currentLocationId": "DRONE_STATION_ID",
+    "createdAt": {"$date": "2024-01-01T00:00:00.000Z"},
+    "updatedAt": {"$date": "2024-01-01T00:00:00.000Z"}
+  },
+  {
+    "code": "DRONE-004",
+    "name": "Sky Hawk 4",
+    "capacity": 5,
+    "battery": 60,
+    "currentLoad": 0,
+    "status": "maintenance",
+    "currentLocationId": "DRONE_STATION_ID",
+    "createdAt": {"$date": "2024-01-01T00:00:00.000Z"},
+    "updatedAt": {"$date": "2024-01-01T00:00:00.000Z"}
+  }
+]
