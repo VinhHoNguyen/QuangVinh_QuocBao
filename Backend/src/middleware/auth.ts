@@ -1,11 +1,14 @@
 import type { Request, Response, NextFunction } from 'express';
-import { auth } from '../config/firebase';
+import jwt from 'jsonwebtoken';
 import { AppError } from './errorHandler';
 import { UserRole } from '../models/types';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
 export interface AuthRequest extends Request {
   user?: {
-    uid: string;
+    _id: string;
+    userId: string;
     email?: string;
     role?: UserRole;
   };
@@ -24,10 +27,15 @@ export const authenticate = async (
     }
 
     const token = authHeader.split(' ')[1];
-    const decodedToken = await auth.verifyIdToken(token);
+    const decodedToken = jwt.verify(token, JWT_SECRET) as {
+      _id: string;
+      email: string;
+      role: UserRole;
+    };
 
     req.user = {
-      uid: decodedToken.uid,
+      _id: decodedToken._id,
+      userId: decodedToken._id,
       email: decodedToken.email,
       role: decodedToken.role || UserRole.CUSTOMER,
     };

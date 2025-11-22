@@ -1,21 +1,19 @@
 import type { Response, NextFunction } from 'express';
-import { db } from '../config/firebase';
 import { AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import {
-  Restaurant,
   RestaurantStatus,
   CreateRestaurantRequest,
-  Location,
   LocationType,
 } from '../models/types';
 import {
-  COLLECTIONS,
   ERROR_MESSAGES,
   SUCCESS_MESSAGES,
   DEFAULT_RESTAURANT_MIN_ORDER,
   DEFAULT_RESTAURANT_MAX_ORDER,
 } from '../models/constants';
+import Restaurant from '../models/Restaurant';
+import Location from '../models/Location';
 
 // Create restaurant
 export const createRestaurant = async (
@@ -39,40 +37,31 @@ export const createRestaurant = async (
     }: CreateRestaurantRequest = req.body;
 
     // Create location first
-    const locationData: Omit<Location, '_id'> = {
+    const newLocation = await Location.create({
       type: LocationType.RESTAURANT,
       coords: location,
       address,
-    };
-
-    const locationRef = await db.collection(COLLECTIONS.LOCATIONS).add(locationData);
+    });
 
     // Create restaurant
-    const newRestaurant: Omit<Restaurant, '_id'> = {
-      ownerId: req.user.uid,
+    const newRestaurant = await Restaurant.create({
+      ownerId: req.user._id,
       name,
       phone,
       address,
-      locationId: locationRef.id,
+      locationId: newLocation._id,
       image,
       imagePublicId: '',
       minOrder,
       maxOrder,
       rating: 0,
       status: RestaurantStatus.PENDING,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    const restaurantRef = await db.collection(COLLECTIONS.RESTAURANTS).add(newRestaurant);
+    });
 
     res.status(201).json({
       success: true,
       message: SUCCESS_MESSAGES.CREATED,
-      data: {
-        _id: restaurantRef.id,
-        ...newRestaurant,
-      },
+      data: newRestaurant,
     });
   } catch (error) {
     next(error);
@@ -88,24 +77,22 @@ export const getAllRestaurants = async (
   try {
     const { status } = req.query;
 
-    let query = db.collection(COLLECTIONS.RESTAURANTS);
-
+    let query: any = {};
     if (status) {
-      query = query.where('status', '==', status) as any;
+      query.status = status;
     }
 
-    const restaurantsSnapshot = await query.get();
-
-    const restaurants = restaurantsSnapshot.docs.map((doc) => ({
-      _id: doc.id,
-      ...doc.data(),
-    }));
+    const restaurants = await Restaurant.find(query)
+      .populate('ownerId', 'name email')
+      .populate('locationId')
+      .populate('products');
 
     res.status(200).json({
       success: true,
       data: restaurants,
     });
   } catch (error) {
+    console.error('❌ Error in getAllRestaurants:', error);
     next(error);
   }
 };
@@ -119,18 +106,23 @@ export const getRestaurantById = async (
   try {
     const { id } = req.params;
 
-    const restaurantDoc = await db.collection(COLLECTIONS.RESTAURANTS).doc(id).get();
+    // Validate MongoDB ObjectId format
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      throw new AppError('Invalid restaurant ID format', 400);
+    }
 
-    if (!restaurantDoc.exists) {
+    const restaurant = await Restaurant.findById(id)
+      .populate('ownerId', 'name email')
+      .populate('locationId')
+      .populate('products');
+
+    if (!restaurant) {
       throw new AppError(ERROR_MESSAGES.RESTAURANT_NOT_FOUND, 404);
     }
 
     res.status(200).json({
       success: true,
-      data: {
-        _id: restaurantDoc.id,
-        ...restaurantDoc.data(),
-      },
+      data: restaurant,
     });
   } catch (error) {
     next(error);
@@ -151,30 +143,27 @@ export const updateRestaurant = async (
     const { id } = req.params;
     const updates = req.body;
 
-    const restaurantDoc = await db.collection(COLLECTIONS.RESTAURANTS).doc(id).get();
+    const restaurant = await Restaurant.findById(id);
 
-    if (!restaurantDoc.exists) {
+    if (!restaurant) {
       throw new AppError(ERROR_MESSAGES.RESTAURANT_NOT_FOUND, 404);
     }
 
-    const restaurant = restaurantDoc.data() as Restaurant;
-
     // Check if user is owner or admin
-    if (restaurant.ownerId !== req.user.uid && req.user.role !== 'admin') {
+    if (restaurant.ownerId.toString() !== req.user._id && req.user.role !== 'admin') {
       throw new AppError(ERROR_MESSAGES.FORBIDDEN, 403);
     }
 
-    await db
-      .collection(COLLECTIONS.RESTAURANTS)
-      .doc(id)
-      .update({
-        ...updates,
-        updatedAt: new Date(),
-      });
+    const updatedRestaurant = await Restaurant.findByIdAndUpdate(
+      id,
+      updates,
+      { new: true }
+    );
 
     res.status(200).json({
       success: true,
       message: SUCCESS_MESSAGES.UPDATED,
+      data: updatedRestaurant,
     });
   } catch (error) {
     next(error);
@@ -194,13 +183,13 @@ export const deleteRestaurant = async (
 
     const { id } = req.params;
 
-    const restaurantDoc = await db.collection(COLLECTIONS.RESTAURANTS).doc(id).get();
+    const restaurant = await Restaurant.findById(id);
 
-    if (!restaurantDoc.exists) {
+    if (!restaurant) {
       throw new AppError(ERROR_MESSAGES.RESTAURANT_NOT_FOUND, 404);
     }
 
-    await db.collection(COLLECTIONS.RESTAURANTS).doc(id).delete();
+    await Restaurant.findByIdAndDelete(id);
 
     res.status(200).json({
       success: true,
@@ -222,15 +211,9 @@ export const getRestaurantsByOwner = async (
       throw new AppError(ERROR_MESSAGES.UNAUTHORIZED, 401);
     }
 
-    const restaurantsSnapshot = await db
-      .collection(COLLECTIONS.RESTAURANTS)
-      .where('ownerId', '==', req.user.uid)
-      .get();
-
-    const restaurants = restaurantsSnapshot.docs.map((doc) => ({
-      _id: doc.id,
-      ...doc.data(),
-    }));
+    const restaurants = await Restaurant.find({ ownerId: req.user._id })
+      .populate('locationId')
+      .populate('products');
 
     res.status(200).json({
       success: true,

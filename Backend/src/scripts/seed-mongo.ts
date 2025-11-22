@@ -1,289 +1,220 @@
-import { db, auth } from '../config/firebase';
-import initializeFirebase from '../config/firebase';
-import {
-  UserRole,
-  UserStatus,
-  RestaurantStatus,
-  ProductCategory,
-  DroneStatus,
-  LocationType,
-  User,
-  Restaurant,
-  Product,
-  Drone,
-} from '../models/types';
-import { COLLECTIONS } from '../models/constants';
+import mongoose from 'mongoose';
+import * as bcrypt from 'bcryptjs';
+import * as dotenv from 'dotenv';
+import User, { UserRole, UserStatus } from '../models/User';
+import Location from '../models/Location';
+import Restaurant, { RestaurantStatus } from '../models/Restaurant';
+import Product, { ProductCategory } from '../models/Product';
+import Drone, { DroneStatus } from '../models/Drone';
 
-// Initialize Firebase before seeding
-initializeFirebase();
+dotenv.config();
 
-const seedData = async () => {
+const MONGODB_URI = 'mongodb+srv://vinhmatlo432_db_user:vinhcucyeuqa3212@cluster0.cwhtyiw.mongodb.net/CNPM?retryWrites=true&w=majority&appName=Cluster0';
+
+async function seed() {
   try {
-    console.log('Starting database seeding...');
+    // Connect to MongoDB
+    await mongoose.connect(MONGODB_URI);
+    console.log('✅ Connected to MongoDB');
 
-    // Clear existing data (optional - comment out if you want to preserve data)
-    console.log('Clearing existing data...');
-    const collections = [
-      COLLECTIONS.USERS,
-      COLLECTIONS.RESTAURANTS,
-      COLLECTIONS.PRODUCTS,
-      COLLECTIONS.DRONES,
-      COLLECTIONS.LOCATIONS,
-      COLLECTIONS.ORDERS,
-      COLLECTIONS.DELIVERIES,
-    ];
-
-    for (const collection of collections) {
-      const snapshot = await db.collection(collection).get();
-      const batch = db.batch();
-      snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-      await batch.commit();
-    }
+    // Clear existing data
+    console.log('🗑️  Clearing existing data...');
+    await User.deleteMany({});
+    await Location.deleteMany({});
+    await Restaurant.deleteMany({});
+    await Product.deleteMany({});
+    await Drone.deleteMany({});
+    console.log('✅ Data cleared');
 
     // Seed Users
-    console.log('Seeding users...');
-    const users: Array<{ email: string; password: string; name: string; phone: string; role: UserRole }> = [
+    console.log('👤 Seeding users...');
+    const hashedPassword = await bcrypt.hash('Admin@123', 10);
+    
+    const users = await User.insertMany([
       {
         email: 'admin@fooddelivery.com',
-        password: 'Admin@123',
         name: 'System Admin',
+        password: hashedPassword,
         phone: '0123456789',
         role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
       },
       {
         email: 'owner1@restaurant.com',
-        password: 'Owner@123',
         name: 'Nguyen Van A',
+        password: hashedPassword,
         phone: '0987654321',
         role: UserRole.RESTAURANT_OWNER,
+        status: UserStatus.ACTIVE,
       },
       {
         email: 'owner2@restaurant.com',
-        password: 'Owner@123',
         name: 'Tran Thi B',
+        password: hashedPassword,
         phone: '0976543210',
         role: UserRole.RESTAURANT_OWNER,
+        status: UserStatus.ACTIVE,
       },
       {
         email: 'owner3@restaurant.com',
-        password: 'Owner@123',
         name: 'Le Van E',
+        password: hashedPassword,
         phone: '0965432108',
         role: UserRole.RESTAURANT_OWNER,
+        status: UserStatus.ACTIVE,
       },
       {
         email: 'customer1@gmail.com',
-        password: 'Customer@123',
         name: 'Le Van C',
+        password: hashedPassword,
         phone: '0965432109',
         role: UserRole.CUSTOMER,
+        status: UserStatus.ACTIVE,
       },
       {
         email: 'customer2@gmail.com',
-        password: 'Customer@123',
         name: 'Pham Thi D',
+        password: hashedPassword,
         phone: '0954321098',
         role: UserRole.CUSTOMER,
+        status: UserStatus.ACTIVE,
       },
       {
         email: 'customer3@gmail.com',
-        password: 'Customer@123',
         name: 'Hoang Van F',
+        password: hashedPassword,
         phone: '0943210987',
         role: UserRole.CUSTOMER,
+        status: UserStatus.ACTIVE,
       },
-    ];
+    ]);
+    console.log(`✅ Created ${users.length} users`);
 
-    const userIds: { [key: string]: string } = {};
-
-    for (const userData of users) {
-      try {
-        // Create user in Firebase Auth
-        const userRecord = await auth.createUser({
-          email: userData.email,
-          password: userData.password,
-          displayName: userData.name,
-        });
-
-        // Set custom claims
-        await auth.setCustomUserClaims(userRecord.uid, { role: userData.role });
-
-        // Save user ID for later use
-        if (userData.role === UserRole.RESTAURANT_OWNER) {
-          userIds[userData.email] = userRecord.uid;
-        }
-
-        // Create user in Firestore
-        const newUser: Omit<User, '_id'> = {
-          email: userData.email,
-          name: userData.name,
-          password: '', // Don't store plain password
-          phone: userData.phone,
-          role: userData.role,
-          status: UserStatus.ACTIVE,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-
-        await db.collection(COLLECTIONS.USERS).doc(userRecord.uid).set(newUser);
-        console.log(`Created user: ${userData.email}`);
-      } catch (error: any) {
-        if (error.code === 'auth/email-already-exists') {
-          console.log(`User ${userData.email} already exists, skipping...`);
-        } else {
-          throw error;
-        }
-      }
-    }
-
-    // Seed Locations for Restaurants
-    console.log('Seeding locations...');
-    const locations = [
+    // Seed Locations
+    console.log('📍 Seeding locations...');
+    const locations = await Location.insertMany([
       {
-        type: LocationType.RESTAURANT,
-        coords: { latitude: 21.0285, longitude: 105.8542 }, // Hanoi
+        type: 'restaurant',
+        coords: { latitude: 21.0285, longitude: 105.8542 },
         address: '36 Hang Bac, Hoan Kiem, Ha Noi',
       },
       {
-        type: LocationType.RESTAURANT,
-        coords: { latitude: 21.0297, longitude: 105.8549 }, // Hanoi
+        type: 'restaurant',
+        coords: { latitude: 21.0297, longitude: 105.8549 },
         address: '12 Tran Hung Dao, Hoan Kiem, Ha Noi',
       },
       {
-        type: LocationType.RESTAURANT,
-        coords: { latitude: 21.0275, longitude: 105.8535 }, // Hanoi
+        type: 'restaurant',
+        coords: { latitude: 21.0275, longitude: 105.8535 },
         address: '89 Hai Ba Trung, Hoan Kiem, Ha Noi',
       },
       {
-        type: LocationType.RESTAURANT,
-        coords: { latitude: 21.0302, longitude: 105.8556 }, // Hanoi
+        type: 'restaurant',
+        coords: { latitude: 21.0302, longitude: 105.8556 },
         address: '45 Le Duan, Hoan Kiem, Ha Noi',
       },
       {
-        type: LocationType.RESTAURANT,
-        coords: { latitude: 21.0288, longitude: 105.8543 }, // Hanoi
+        type: 'restaurant',
+        coords: { latitude: 21.0288, longitude: 105.8543 },
         address: '23 Nguyen Thai Hoc, Ba Dinh, Ha Noi',
       },
       {
-        type: LocationType.RESTAURANT,
-        coords: { latitude: 21.0280, longitude: 105.8540 }, // Hanoi
+        type: 'restaurant',
+        coords: { latitude: 21.0280, longitude: 105.8540 },
         address: '67 Tran Phu, Ba Dinh, Ha Noi',
       },
       {
-        type: LocationType.DRONE_STATION,
+        type: 'drone_station',
         coords: { latitude: 21.0290, longitude: 105.8545 },
         address: 'Main Drone Station, Ha Noi',
       },
-    ];
+    ]);
+    console.log(`✅ Created ${locations.length} locations`);
 
-    const locationIds: string[] = [];
-
-    for (const locationData of locations) {
-      const locationRef = await db.collection(COLLECTIONS.LOCATIONS).add(locationData);
-      locationIds.push(locationRef.id);
-      console.log(`Created location: ${locationData.address}`);
-    }
-
-    // Seed Restaurants (Based on Client mock data)
-    console.log('Seeding restaurants...');
-    const restaurants = [
+    // Seed Restaurants
+    console.log('🏪 Seeding restaurants...');
+    const restaurants = await Restaurant.insertMany([
       {
         name: 'Bún Chả Hà Nội 36',
         phone: '0241234567',
         address: '36 Hang Bac, Hoan Kiem, Ha Noi',
-        locationId: locationIds[0],
+        locationId: locations[0]._id,
         image: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=500',
         minOrder: 50000,
         maxOrder: 5000000,
         rating: 4.8,
         status: RestaurantStatus.ACTIVE,
-        ownerId: userIds['owner1@restaurant.com'] || 'owner1',
+        ownerId: users[1]._id,
       },
       {
         name: 'Bánh Mì Saigon',
         phone: '0242345678',
         address: '12 Tran Hung Dao, Hoan Kiem, Ha Noi',
-        locationId: locationIds[1],
+        locationId: locations[1]._id,
         image: 'https://images.unsplash.com/photo-1608039829572-78524f79c4c7?w=500',
         minOrder: 40000,
         maxOrder: 3000000,
         rating: 4.7,
         status: RestaurantStatus.ACTIVE,
-        ownerId: userIds['owner2@restaurant.com'] || 'owner2',
+        ownerId: users[2]._id,
       },
       {
         name: 'Cơm Tấm Huyền',
         phone: '0243456789',
         address: '89 Hai Ba Trung, Hoan Kiem, Ha Noi',
-        locationId: locationIds[2],
+        locationId: locations[2]._id,
         image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=500',
         minOrder: 60000,
         maxOrder: 8000000,
         rating: 4.9,
         status: RestaurantStatus.ACTIVE,
-        ownerId: userIds['owner1@restaurant.com'] || 'owner1',
+        ownerId: users[1]._id,
       },
       {
         name: 'Tàu Hủ Chiên Tàu Hủ',
         phone: '0244567890',
         address: '45 Le Duan, Hoan Kiem, Ha Noi',
-        locationId: locationIds[3],
+        locationId: locations[3]._id,
         image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
         minOrder: 30000,
         maxOrder: 2000000,
         rating: 4.6,
         status: RestaurantStatus.ACTIVE,
-        ownerId: userIds['owner2@restaurant.com'] || 'owner2',
+        ownerId: users[2]._id,
       },
       {
         name: 'Bánh Xèo Hải Phòng',
         phone: '0245678901',
         address: '23 Nguyen Thai Hoc, Ba Dinh, Ha Noi',
-        locationId: locationIds[4],
+        locationId: locations[4]._id,
         image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500',
         minOrder: 50000,
         maxOrder: 4000000,
         rating: 4.8,
         status: RestaurantStatus.ACTIVE,
-        ownerId: userIds['owner3@restaurant.com'] || 'owner3',
+        ownerId: users[3]._id,
       },
       {
         name: 'Bún Thang Gà Đại Lộ',
         phone: '0246789012',
         address: '67 Tran Phu, Ba Dinh, Ha Noi',
-        locationId: locationIds[5],
+        locationId: locations[5]._id,
         image: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=500',
         minOrder: 50000,
         maxOrder: 5000000,
         rating: 4.7,
         status: RestaurantStatus.ACTIVE,
-        ownerId: userIds['owner3@restaurant.com'] || 'owner3',
+        ownerId: users[3]._id,
       },
-    ];
+    ]);
+    console.log(`✅ Created ${restaurants.length} restaurants`);
 
-    const restaurantIds: string[] = [];
-
-    for (const restaurantData of restaurants) {
-      const restaurantDoc: Omit<Restaurant, '_id'> = {
-        ...restaurantData,
-        imagePublicId: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      const restaurantRef = await db.collection(COLLECTIONS.RESTAURANTS).add(restaurantDoc);
-      restaurantIds.push(restaurantRef.id);
-      console.log(`Created restaurant: ${restaurantData.name}`);
-    }
-
-    // Seed Products (Based on Client mock data)
-    console.log('Seeding products...');
-    const products = [
-      // Bún Chả Hà Nội 36 products
+    // Seed Products
+    console.log('🍜 Seeding products...');
+    const products = await Product.insertMany([
+      // Bún Chả Hà Nội 36
       {
-        restaurantId: restaurantIds[0],
+        restaurantId: restaurants[0]._id,
         name: 'Bún Chả Hà Nội',
         description: 'Bún chả nướng thơm lừng cùng nước chấm chuẩn vị Hà Nội',
         price: 45000,
@@ -292,7 +223,7 @@ const seedData = async () => {
         available: true,
       },
       {
-        restaurantId: restaurantIds[0],
+        restaurantId: restaurants[0]._id,
         name: 'Nem Rán',
         description: 'Nem rán giòn vàng, nhân thịt tươi',
         price: 32000,
@@ -301,7 +232,7 @@ const seedData = async () => {
         available: true,
       },
       {
-        restaurantId: restaurantIds[0],
+        restaurantId: restaurants[0]._id,
         name: 'Trà Đá',
         description: 'Trà đá mát lạnh giải nhiệt',
         price: 5000,
@@ -309,9 +240,9 @@ const seedData = async () => {
         category: ProductCategory.DRINK,
         available: true,
       },
-      // Bánh Mì Saigon products
+      // Bánh Mì Saigon
       {
-        restaurantId: restaurantIds[1],
+        restaurantId: restaurants[1]._id,
         name: 'Bánh Mì Thập Cẩm',
         description: 'Bánh mì kẹp đầy đủ các loại chả, thịt, trứng',
         price: 28000,
@@ -320,7 +251,7 @@ const seedData = async () => {
         available: true,
       },
       {
-        restaurantId: restaurantIds[1],
+        restaurantId: restaurants[1]._id,
         name: 'Bánh Mì Pâté',
         description: 'Bánh mì pâté thơm ngon, bơ tươi',
         price: 24000,
@@ -329,7 +260,7 @@ const seedData = async () => {
         available: true,
       },
       {
-        restaurantId: restaurantIds[1],
+        restaurantId: restaurants[1]._id,
         name: 'Cafe Sữa Đá',
         description: 'Cà phê sữa đá đậm đà truyền thống',
         price: 20000,
@@ -337,9 +268,9 @@ const seedData = async () => {
         category: ProductCategory.DRINK,
         available: true,
       },
-      // Cơm Tấm Huyền products
+      // Cơm Tấm Huyền
       {
-        restaurantId: restaurantIds[2],
+        restaurantId: restaurants[2]._id,
         name: 'Cơm Tấm Sườn Nướng',
         description: 'Cơm tấm sườn nướng vàng, trứng ốp la',
         price: 52000,
@@ -348,7 +279,7 @@ const seedData = async () => {
         available: true,
       },
       {
-        restaurantId: restaurantIds[2],
+        restaurantId: restaurants[2]._id,
         name: 'Cơm Tấm Bì Chả',
         description: 'Cơm tấm bì chả truyền thống',
         price: 45000,
@@ -357,7 +288,7 @@ const seedData = async () => {
         available: true,
       },
       {
-        restaurantId: restaurantIds[2],
+        restaurantId: restaurants[2]._id,
         name: 'Nước Mía',
         description: 'Nước mía tươi mát, vắt nguyên chất',
         price: 15000,
@@ -365,9 +296,9 @@ const seedData = async () => {
         category: ProductCategory.DRINK,
         available: true,
       },
-      // Tàu Hủ Chiên Tàu Hủ products
+      // Tàu Hủ Chiên
       {
-        restaurantId: restaurantIds[3],
+        restaurantId: restaurants[3]._id,
         name: 'Tàu Hủ Non Chiên',
         description: 'Tàu hủ non chiên vàng giòn, nhúng tương cua',
         price: 35000,
@@ -376,7 +307,7 @@ const seedData = async () => {
         available: true,
       },
       {
-        restaurantId: restaurantIds[3],
+        restaurantId: restaurants[3]._id,
         name: 'Đậu Hủ Sốt Cà',
         description: 'Đậu hủ sốt cà chua đậm đà',
         price: 38000,
@@ -385,7 +316,7 @@ const seedData = async () => {
         available: true,
       },
       {
-        restaurantId: restaurantIds[3],
+        restaurantId: restaurants[3]._id,
         name: 'Chè Đậu Xanh',
         description: 'Chè đậu xanh mát lạnh, béo ngậy',
         price: 20000,
@@ -393,9 +324,9 @@ const seedData = async () => {
         category: ProductCategory.DESSERT,
         available: true,
       },
-      // Bánh Xèo Hải Phòng products
+      // Bánh Xèo Hải Phòng
       {
-        restaurantId: restaurantIds[4],
+        restaurantId: restaurants[4]._id,
         name: 'Bánh Xèo Hải Phòng',
         description: 'Bánh xèo giòn rụm, có tôm, mực, rau sống',
         price: 38000,
@@ -404,7 +335,7 @@ const seedData = async () => {
         available: true,
       },
       {
-        restaurantId: restaurantIds[4],
+        restaurantId: restaurants[4]._id,
         name: 'Bánh Cuốn Tôm Thịt',
         description: 'Bánh cuốn tôm thịt mềm mại, nước chấm đậm đà',
         price: 35000,
@@ -413,7 +344,7 @@ const seedData = async () => {
         available: true,
       },
       {
-        restaurantId: restaurantIds[4],
+        restaurantId: restaurants[4]._id,
         name: 'Nước Chanh Dây',
         description: 'Nước chanh dây chua ngọt, mát lạnh',
         price: 18000,
@@ -421,9 +352,9 @@ const seedData = async () => {
         category: ProductCategory.DRINK,
         available: true,
       },
-      // Bún Thang Gà Đại Lộ products
+      // Bún Thang Gà Đại Lộ
       {
-        restaurantId: restaurantIds[5],
+        restaurantId: restaurants[5]._id,
         name: 'Bún Thang Gà',
         description: 'Bún thang gà tươi, nước dùng thơm ngon, hành chiên giòn',
         price: 42000,
@@ -432,7 +363,7 @@ const seedData = async () => {
         available: true,
       },
       {
-        restaurantId: restaurantIds[5],
+        restaurantId: restaurants[5]._id,
         name: 'Phở Gà',
         description: 'Phở gà nước dùng trong veo, thịt gà mềm',
         price: 45000,
@@ -441,7 +372,7 @@ const seedData = async () => {
         available: true,
       },
       {
-        restaurantId: restaurantIds[5],
+        restaurantId: restaurants[5]._id,
         name: 'Trà Atiso',
         description: 'Trà atiso thanh nhiệt, tốt cho sức khỏe',
         price: 12000,
@@ -449,23 +380,12 @@ const seedData = async () => {
         category: ProductCategory.DRINK,
         available: true,
       },
-    ];
-
-    for (const productData of products) {
-      const productDoc: Omit<Product, '_id'> = {
-        ...productData,
-        imagePublicId: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      await db.collection(COLLECTIONS.PRODUCTS).add(productDoc);
-      console.log(`Created product: ${productData.name}`);
-    }
+    ]);
+    console.log(`✅ Created ${products.length} products`);
 
     // Seed Drones
-    console.log('Seeding drones...');
-    const drones = [
+    console.log('🚁 Seeding drones...');
+    const drones = await Drone.insertMany([
       {
         code: 'DRONE-001',
         name: 'Sky Hawk 1',
@@ -473,7 +393,7 @@ const seedData = async () => {
         battery: 100,
         currentLoad: 0,
         status: DroneStatus.AVAILABLE,
-        currentLocationId: locationIds[3],
+        currentLocationId: locations[6]._id,
       },
       {
         code: 'DRONE-002',
@@ -482,7 +402,7 @@ const seedData = async () => {
         battery: 85,
         currentLoad: 0,
         status: DroneStatus.AVAILABLE,
-        currentLocationId: locationIds[3],
+        currentLocationId: locations[6]._id,
       },
       {
         code: 'DRONE-003',
@@ -491,7 +411,7 @@ const seedData = async () => {
         battery: 100,
         currentLoad: 0,
         status: DroneStatus.AVAILABLE,
-        currentLocationId: locationIds[3],
+        currentLocationId: locations[6]._id,
       },
       {
         code: 'DRONE-004',
@@ -500,35 +420,27 @@ const seedData = async () => {
         battery: 60,
         currentLoad: 0,
         status: DroneStatus.MAINTENANCE,
-        currentLocationId: locationIds[3],
+        currentLocationId: locations[6]._id,
       },
-    ];
+    ]);
+    console.log(`✅ Created ${drones.length} drones`);
 
-    for (const droneData of drones) {
-      const droneDoc: Omit<Drone, '_id'> = {
-        ...droneData,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+    console.log('\n=================================');
+    console.log('🎉 Seeding completed successfully!');
+    console.log('=================================');
+    console.log(`👤 Users: ${users.length}`);
+    console.log(`📍 Locations: ${locations.length}`);
+    console.log(`🏪 Restaurants: ${restaurants.length}`);
+    console.log(`🍜 Products: ${products.length}`);
+    console.log(`🚁 Drones: ${drones.length}`);
+    console.log('=================================\n');
 
-      await db.collection(COLLECTIONS.DRONES).add(droneDoc);
-      console.log(`Created drone: ${droneData.name}`);
-    }
-
-    console.log('Database seeding completed successfully!');
-    console.log('\nTest Accounts:');
-    console.log('Admin: admin@fooddelivery.com / Admin@123');
-    console.log('Restaurant Owner 1: owner1@restaurant.com / Owner@123');
-    console.log('Restaurant Owner 2: owner2@restaurant.com / Owner@123');
-    console.log('Customer 1: customer1@gmail.com / Customer@123');
-    console.log('Customer 2: customer2@gmail.com / Customer@123');
-
-    process.exit(0);
   } catch (error) {
-    console.error('Error seeding database:', error);
-    process.exit(1);
+    console.error('❌ Seeding error:', error);
+  } finally {
+    await mongoose.disconnect();
+    console.log('👋 Disconnected from MongoDB');
   }
-};
+}
 
-// Run the seed function
-seedData();
+seed();

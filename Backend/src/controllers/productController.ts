@@ -1,9 +1,10 @@
 import type { Response, NextFunction } from 'express';
-import { db } from '../config/firebase';
 import { AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
-import { Product, CreateProductRequest } from '../models/types';
-import { COLLECTIONS, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../models/constants';
+import { CreateProductRequest } from '../models/types';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../models/constants';
+import Product from '../models/Product';
+import Restaurant from '../models/Restaurant';
 
 // Create product
 export const createProduct = async (
@@ -27,13 +28,13 @@ export const createProduct = async (
     }: CreateProductRequest = req.body;
 
     // Verify restaurant exists
-    const restaurantDoc = await db.collection(COLLECTIONS.RESTAURANTS).doc(restaurantId).get();
+    const restaurant = await Restaurant.findById(restaurantId);
 
-    if (!restaurantDoc.exists) {
+    if (!restaurant) {
       throw new AppError(ERROR_MESSAGES.RESTAURANT_NOT_FOUND, 404);
     }
 
-    const newProduct: Omit<Product, '_id'> = {
+    const newProduct = await Product.create({
       restaurantId,
       name,
       description,
@@ -42,19 +43,12 @@ export const createProduct = async (
       imagePublicId: '',
       available,
       category,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    const productRef = await db.collection(COLLECTIONS.PRODUCTS).add(newProduct);
+    });
 
     res.status(201).json({
       success: true,
       message: SUCCESS_MESSAGES.CREATED,
-      data: {
-        _id: productRef.id,
-        ...newProduct,
-      },
+      data: newProduct,
     });
   } catch (error) {
     next(error);
@@ -70,26 +64,21 @@ export const getAllProducts = async (
   try {
     const { category, available, restaurantId } = req.query;
 
-    let query = db.collection(COLLECTIONS.PRODUCTS);
+    let query: any = {};
 
     if (restaurantId) {
-      query = query.where('restaurantId', '==', restaurantId) as any;
+      query.restaurantId = restaurantId;
     }
 
     if (category) {
-      query = query.where('category', '==', category) as any;
+      query.category = category;
     }
 
     if (available !== undefined) {
-      query = query.where('available', '==', available === 'true') as any;
+      query.available = available === 'true';
     }
 
-    const productsSnapshot = await query.get();
-
-    const products = productsSnapshot.docs.map((doc) => ({
-      _id: doc.id,
-      ...doc.data(),
-    }));
+    const products = await Product.find(query).populate('restaurantId', 'name address');
 
     res.status(200).json({
       success: true,
@@ -109,18 +98,15 @@ export const getProductById = async (
   try {
     const { id } = req.params;
 
-    const productDoc = await db.collection(COLLECTIONS.PRODUCTS).doc(id).get();
+    const product = await Product.findById(id).populate('restaurantId', 'name address');
 
-    if (!productDoc.exists) {
+    if (!product) {
       throw new AppError(ERROR_MESSAGES.PRODUCT_NOT_FOUND, 404);
     }
 
     res.status(200).json({
       success: true,
-      data: {
-        _id: productDoc.id,
-        ...productDoc.data(),
-      },
+      data: product,
     });
   } catch (error) {
     next(error);
@@ -136,15 +122,7 @@ export const getProductsByRestaurant = async (
   try {
     const { restaurantId } = req.params;
 
-    const productsSnapshot = await db
-      .collection(COLLECTIONS.PRODUCTS)
-      .where('restaurantId', '==', restaurantId)
-      .get();
-
-    const products = productsSnapshot.docs.map((doc: any) => ({
-      _id: doc.id,
-      ...doc.data(),
-    }));
+    const products = await Product.find({ restaurantId });
 
     res.status(200).json({
       success: true,
@@ -169,23 +147,20 @@ export const updateProduct = async (
     const { id } = req.params;
     const updates = req.body;
 
-    const productDoc = await db.collection(COLLECTIONS.PRODUCTS).doc(id).get();
+    const product = await Product.findByIdAndUpdate(
+      id,
+      updates,
+      { new: true }
+    );
 
-    if (!productDoc.exists) {
+    if (!product) {
       throw new AppError(ERROR_MESSAGES.PRODUCT_NOT_FOUND, 404);
     }
-
-    await db
-      .collection(COLLECTIONS.PRODUCTS)
-      .doc(id)
-      .update({
-        ...updates,
-        updatedAt: new Date(),
-      });
 
     res.status(200).json({
       success: true,
       message: SUCCESS_MESSAGES.UPDATED,
+      data: product,
     });
   } catch (error) {
     next(error);
@@ -205,13 +180,11 @@ export const deleteProduct = async (
 
     const { id } = req.params;
 
-    const productDoc = await db.collection(COLLECTIONS.PRODUCTS).doc(id).get();
+    const product = await Product.findByIdAndDelete(id);
 
-    if (!productDoc.exists) {
+    if (!product) {
       throw new AppError(ERROR_MESSAGES.PRODUCT_NOT_FOUND, 404);
     }
-
-    await db.collection(COLLECTIONS.PRODUCTS).doc(id).delete();
 
     res.status(200).json({
       success: true,

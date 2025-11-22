@@ -14,8 +14,8 @@ const router = Router();
 
 // Public routes
 router.get('/', getAllProducts);
+router.get('/restaurant/:restaurantId', getProductsByRestaurant); // Must be before /:id
 router.get('/:id', getProductById);
-router.get('/restaurant/:restaurantId', getProductsByRestaurant);
 
 // Protected routes - Restaurant owner and admin
 router.post(

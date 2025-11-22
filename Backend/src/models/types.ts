@@ -1,4 +1,4 @@
-import type { Timestamp } from 'firebase-admin/firestore';
+// import type { Timestamp } from 'firebase-admin/firestore';
 
 // Enums
 export enum UserRole {
@@ -80,8 +80,8 @@ export enum LocationType {
 
 // Base timestamp interface
 export interface Timestamps {
-  createdAt: Date | Timestamp;
-  updatedAt: Date | Timestamp;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // Location coordinates
@@ -200,8 +200,8 @@ export interface Delivery extends Timestamps {
   driverId?: string; // Reference to User (optional)
   dropoffLocationId: string; // Reference to Location
   status: DeliveryStatus;
-  estimatedTime: Date | Timestamp;
-  actualTime?: Date | Timestamp;
+  estimatedTime: Date;
+  actualTime?: Date;
 }
 
 // Drone Model

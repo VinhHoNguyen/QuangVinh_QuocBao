@@ -21,10 +21,13 @@ export function useRestaurants(status = "active") {
     const loadRestaurants = async () => {
       try {
         setLoading(true)
+        setError(null)
         const data = await fetchRestaurants(status)
         setRestaurants(data)
       } catch (err) {
+        console.error('Error loading restaurants:', err)
         setError(err as Error)
+        setRestaurants([])
       } finally {
         setLoading(false)
       }
@@ -46,10 +49,13 @@ export function useRestaurant(id: string) {
     const loadRestaurant = async () => {
       try {
         setLoading(true)
+        setError(null)
         const data = await fetchRestaurantById(id)
         setRestaurant(data)
       } catch (err) {
+        console.error('Error loading restaurant:', err)
         setError(err as Error)
+        setRestaurant(null)
       } finally {
         setLoading(false)
       }
@@ -73,10 +79,13 @@ export function useProducts(params?: { category?: string; available?: boolean; r
     const loadProducts = async () => {
       try {
         setLoading(true)
+        setError(null)
         const data = await fetchProducts(params)
         setProducts(data)
       } catch (err) {
+        console.error('Error loading products:', err)
         setError(err as Error)
+        setProducts([])
       } finally {
         setLoading(false)
       }
@@ -98,10 +107,13 @@ export function useRestaurantProducts(restaurantId: string) {
     const loadProducts = async () => {
       try {
         setLoading(true)
+        setError(null)
         const data = await fetchProductsByRestaurant(restaurantId)
         setProducts(data)
       } catch (err) {
+        console.error('Error loading products by restaurant:', err)
         setError(err as Error)
+        setProducts([])
       } finally {
         setLoading(false)
       }

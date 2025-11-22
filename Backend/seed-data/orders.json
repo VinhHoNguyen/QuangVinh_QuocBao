@@ -1,0 +1,130 @@
+[
+  {
+    "_id": {"$oid": "674000000000000000000001"},
+    "userId": "REF:users[1]._id",
+    "restaurantId": "REF:restaurants[0]._id",
+    "items": [
+      {
+        "_id": {"$oid": "674000000000000000000011"},
+        "productId": "REF:products[0]._id",
+        "productName": "Phở Bò Tái",
+        "price": 45000,
+        "quantity": 2
+      },
+      {
+        "_id": {"$oid": "674000000000000000000012"},
+        "productId": "REF:products[1]._id",
+        "productName": "Phở Gà",
+        "price": 40000,
+        "quantity": 1
+      }
+    ],
+    "totalPrice": 130000,
+    "status": "delivered",
+    "paymentMethod": "e_wallet",
+    "paymentStatus": "completed",
+    "shippingAddress": {
+      "street": "123 Lê Lợi",
+      "ward": "Phường Bến Thành",
+      "district": "Quận 1",
+      "city": "TP.HCM",
+      "coordinates": {
+        "latitude": 10.7756,
+        "longitude": 106.7019
+      }
+    },
+    "notes": "Giao giờ hành chính",
+    "createdAt": {"$date": "2024-11-20T08:30:00.000Z"},
+    "updatedAt": {"$date": "2024-11-20T09:15:00.000Z"}
+  },
+  {
+    "_id": {"$oid": "674000000000000000000002"},
+    "userId": "REF:users[1]._id",
+    "restaurantId": "REF:restaurants[1]._id",
+    "items": [
+      {
+        "_id": {"$oid": "674000000000000000000013"},
+        "productId": "REF:products[3]._id",
+        "productName": "Cơm Tấm Sườn Bì",
+        "price": 35000,
+        "quantity": 3
+      }
+    ],
+    "totalPrice": 105000,
+    "status": "delivering",
+    "paymentMethod": "cash",
+    "paymentStatus": "pending",
+    "shippingAddress": {
+      "street": "456 Nguyễn Huệ",
+      "ward": "Phường Bến Nghé",
+      "district": "Quận 1",
+      "city": "TP.HCM",
+      "coordinates": {
+        "latitude": 10.7743,
+        "longitude": 106.7044
+      }
+    },
+    "createdAt": {"$date": "2024-11-22T10:00:00.000Z"},
+    "updatedAt": {"$date": "2024-11-22T10:30:00.000Z"}
+  },
+  {
+    "_id": {"$oid": "674000000000000000000003"},
+    "userId": "REF:users[1]._id",
+    "restaurantId": "REF:restaurants[5]._id",
+    "items": [
+      {
+        "_id": {"$oid": "674000000000000000000014"},
+        "productId": "REF:products[15]._id",
+        "productName": "Sushi Cá Hồi",
+        "price": 120000,
+        "quantity": 1
+      }
+    ],
+    "totalPrice": 120000,
+    "status": "preparing",
+    "paymentMethod": "credit_card",
+    "paymentStatus": "completed",
+    "shippingAddress": {
+      "street": "789 Hai Bà Trưng",
+      "ward": "Phường Đa Kao",
+      "district": "Quận 1",
+      "city": "TP.HCM",
+      "coordinates": {
+        "latitude": 10.7878,
+        "longitude": 106.6933
+      }
+    },
+    "createdAt": {"$date": "2024-11-22T11:00:00.000Z"},
+    "updatedAt": {"$date": "2024-11-22T11:15:00.000Z"}
+  },
+  {
+    "_id": {"$oid": "674000000000000000000004"},
+    "userId": "REF:users[1]._id",
+    "restaurantId": "REF:restaurants[2]._id",
+    "items": [
+      {
+        "_id": {"$oid": "674000000000000000000015"},
+        "productId": "REF:products[6]._id",
+        "productName": "Bánh Mì Thịt Nguội",
+        "price": 20000,
+        "quantity": 2
+      }
+    ],
+    "totalPrice": 40000,
+    "status": "pending",
+    "paymentMethod": "bank_transfer",
+    "paymentStatus": "pending",
+    "shippingAddress": {
+      "street": "234 Võ Văn Tần",
+      "ward": "Phường 5",
+      "district": "Quận 3",
+      "city": "TP.HCM",
+      "coordinates": {
+        "latitude": 10.7726,
+        "longitude": 106.6901
+      }
+    },
+    "createdAt": {"$date": "2024-11-22T12:00:00.000Z"},
+    "updatedAt": {"$date": "2024-11-22T12:00:00.000Z"}
+  }
+]

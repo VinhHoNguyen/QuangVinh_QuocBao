@@ -83,44 +83,44 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([])
   const [savedAddresses, setSavedAddresses] = useState<RecipientInfo[]>([])
 
-  // Load user orders on mount
-  useEffect(() => {
-    const loadOrders = async () => {
-      try {
-        const response = await orderAPI.getUserOrders()
-        if (response.success && response.data) {
-          // Convert API orders to local format
-          const convertedOrders: Order[] = response.data.map((apiOrder: APIOrder) => ({
-            id: apiOrder._id,
-            items: apiOrder.items.map((item) => ({
-              id: item._id,
-              name: item.productName,
-              price: item.price,
-              quantity: item.quantity,
-              image: "/placeholder-dish.jpg",
-            })),
-            recipientInfo: {
-              fullName: "User",
-              phone: "0123456789",
-              email: "user@example.com",
-              address: `${apiOrder.shippingAddress.street}, ${apiOrder.shippingAddress.ward}, ${apiOrder.shippingAddress.district}, ${apiOrder.shippingAddress.city}`,
-            },
-            deliveryMethod: "drone",
-            paymentMethod: apiOrder.paymentMethod === "cash" ? "cod" : "ewallet",
-            totalPrice: apiOrder.totalPrice,
-            status: apiOrder.status === "pending" ? "preparing" : apiOrder.status === "delivered" ? "delivered" : "on-the-way",
-            createdAt: new Date(apiOrder.createdAt),
-            estimatedDeliveryTime: "15-20 phút",
-          }))
-          setOrders(convertedOrders)
-        }
-      } catch (error) {
-        console.error("Error loading orders:", error)
-      }
-    }
-
-    loadOrders()
-  }, [])
+  // TODO: Load user orders when backend Order API is ready
+  // useEffect(() => {
+  //   const loadOrders = async () => {
+  //     try {
+  //       const response = await orderAPI.getUserOrders()
+  //       if (response.success && response.data) {
+  //         // Convert API orders to local format
+  //         const convertedOrders: Order[] = response.data.map((apiOrder: APIOrder) => ({
+  //           id: apiOrder._id,
+  //           items: apiOrder.items.map((item) => ({
+  //             id: item._id,
+  //             name: item.productName,
+  //             price: item.price,
+  //             quantity: item.quantity,
+  //             image: "/placeholder-dish.jpg",
+  //           })),
+  //           recipientInfo: {
+  //             fullName: "User",
+  //             phone: "0123456789",
+  //             email: "user@example.com",
+  //             address: `${apiOrder.shippingAddress.street}, ${apiOrder.shippingAddress.ward}, ${apiOrder.shippingAddress.district}, ${apiOrder.shippingAddress.city}`,
+  //           },
+  //           deliveryMethod: "drone",
+  //           paymentMethod: apiOrder.paymentMethod === "cash" ? "cod" : "ewallet",
+  //           totalPrice: apiOrder.totalPrice,
+  //           status: apiOrder.status === "pending" ? "preparing" : apiOrder.status === "delivered" ? "delivered" : "on-the-way",
+  //           createdAt: new Date(apiOrder.createdAt),
+  //           estimatedDeliveryTime: "15-20 phút",
+  //         }))
+  //         setOrders(convertedOrders)
+  //       }
+  //     } catch (error) {
+  //       console.error("Error loading orders:", error)
+  //     }
+  //   }
+  //
+  //   loadOrders()
+  // }, [])
 
   const addToCart = useCallback((item: Omit<CartItem, "quantity">) => {
     setCart((prev) => {

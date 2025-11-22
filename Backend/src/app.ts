@@ -9,9 +9,10 @@ import { errorHandler } from './middleware/errorHandler';
 import authRoutes from './routes/authRoutes';
 import restaurantRoutes from './routes/restaurantRoutes';
 import productRoutes from './routes/productRoutes';
-import orderRoutes from './routes/orderRoutes';
+import cartRoutes from './routes/cartRoutes';
+// import orderRoutes from './routes/orderRoutes';
 import droneRoutes from './routes/droneRoutes';
-import deliveryRoutes from './routes/deliveryRoutes';
+// import deliveryRoutes from './routes/deliveryRoutes';
 
 const app: Application = express();
 
@@ -41,9 +42,10 @@ app.get('/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/restaurants', restaurantRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api/orders', orderRoutes);
+app.use('/api/cart', cartRoutes);
+// app.use('/api/orders', orderRoutes); // TODO: Migrate to MongoDB
 app.use('/api/drones', droneRoutes);
-app.use('/api/deliveries', deliveryRoutes);
+// app.use('/api/deliveries', deliveryRoutes); // TODO: Migrate to MongoDB
 
 // 404 handler
 app.use('*', (_req, res) => {

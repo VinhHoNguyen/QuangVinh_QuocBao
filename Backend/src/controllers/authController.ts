@@ -1,15 +1,18 @@
 import type { Response, NextFunction } from 'express';
-import { db, auth } from '../config/firebase';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import {
-  User,
   UserRole,
   UserStatus,
   CreateUserRequest,
   LoginRequest,
 } from '../models/types';
-import { COLLECTIONS, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../models/constants';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../models/constants';
+import User from '../models/User';
+
+const JWT_SECRET: string = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Register new user
 export const register = async (
@@ -21,47 +24,42 @@ export const register = async (
     const { email, name, password, phone, role = UserRole.CUSTOMER }: CreateUserRequest = req.body;
 
     // Check if user exists
-    const existingUser = await db
-      .collection(COLLECTIONS.USERS)
-      .where('email', '==', email)
-      .get();
+    const existingUser = await User.findOne({ email });
 
-    if (!existingUser.empty) {
+    if (existingUser) {
       throw new AppError(ERROR_MESSAGES.USER_EXISTS, 400);
     }
 
-    // Create user in Firebase Auth
-    const userRecord = await auth.createUser({
-      email,
-      password,
-      displayName: name,
-    });
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Set custom claims for role
-    await auth.setCustomUserClaims(userRecord.uid, { role });
-
-    // Create user document in Firestore
-    const newUser: Omit<User, '_id'> = {
+    // Create user document
+    const newUser = await User.create({
       email,
       name,
-      password: '', // Don't store password in Firestore
+      password: hashedPassword,
       phone,
       role,
       status: UserStatus.ACTIVE,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    await db.collection(COLLECTIONS.USERS).doc(userRecord.uid).set(newUser);
+    // Generate JWT token
+    const payload = { 
+      _id: newUser._id.toString(), 
+      email: newUser.email, 
+      role: newUser.role 
+    };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({
       success: true,
       message: SUCCESS_MESSAGES.REGISTER_SUCCESS,
       data: {
-        uid: userRecord.uid,
-        email,
-        name,
-        role,
+        _id: newUser._id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
+        token,
       },
     });
   } catch (error) {
@@ -76,28 +74,39 @@ export const login = async (
   next: NextFunction
 ) => {
   try {
-    const { email }: LoginRequest = req.body;
+    const { email, password }: LoginRequest = req.body;
 
-    // Get user from Firestore
-    const userSnapshot = await db
-      .collection(COLLECTIONS.USERS)
-      .where('email', '==', email)
-      .get();
+    // Get user from database
+    const user = await User.findOne({ email });
 
-    if (userSnapshot.empty) {
+    if (!user) {
       throw new AppError(ERROR_MESSAGES.INVALID_CREDENTIALS, 401);
     }
 
-    const userData = userSnapshot.docs[0].data() as User;
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      throw new AppError(ERROR_MESSAGES.INVALID_CREDENTIALS, 401);
+    }
+
+    // Generate JWT token
+    const payload = { 
+      _id: user._id.toString(), 
+      email: user.email, 
+      role: user.role 
+    };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 
     res.status(200).json({
       success: true,
       message: SUCCESS_MESSAGES.LOGIN_SUCCESS,
       data: {
-        uid: userSnapshot.docs[0].id,
-        email: userData.email,
-        name: userData.name,
-        role: userData.role,
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        token,
       },
     });
   } catch (error) {
@@ -116,25 +125,23 @@ export const getProfile = async (
       throw new AppError(ERROR_MESSAGES.UNAUTHORIZED, 401);
     }
 
-    const userDoc = await db.collection(COLLECTIONS.USERS).doc(req.user.uid).get();
+    const user = await User.findById(req.user._id).select('-password');
 
-    if (!userDoc.exists) {
+    if (!user) {
       throw new AppError(ERROR_MESSAGES.NOT_FOUND, 404);
     }
-
-    const userData = userDoc.data() as User;
 
     res.status(200).json({
       success: true,
       data: {
-        _id: userDoc.id,
-        email: userData.email,
-        name: userData.name,
-        phone: userData.phone,
-        role: userData.role,
-        status: userData.status,
-        createdAt: userData.createdAt,
-        updatedAt: userData.updatedAt,
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone,
+        role: user.role,
+        status: user.status,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
       },
     });
   } catch (error) {
@@ -154,18 +161,25 @@ export const updateProfile = async (
     }
 
     const { name, phone } = req.body;
-    const updates: Partial<User> = {
-      updatedAt: new Date(),
-    };
+    const updates: any = {};
 
     if (name) updates.name = name;
     if (phone) updates.phone = phone;
 
-    await db.collection(COLLECTIONS.USERS).doc(req.user.uid).update(updates);
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      updates,
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      throw new AppError(ERROR_MESSAGES.NOT_FOUND, 404);
+    }
 
     res.status(200).json({
       success: true,
       message: SUCCESS_MESSAGES.UPDATED,
+      data: user,
     });
   } catch (error) {
     next(error);
@@ -179,21 +193,7 @@ export const getAllUsers = async (
   next: NextFunction
 ) => {
   try {
-    const usersSnapshot = await db.collection(COLLECTIONS.USERS).get();
-
-    const users = usersSnapshot.docs.map((doc: any) => {
-      const data = doc.data();
-      return {
-        _id: doc.id,
-        email: data.email,
-        name: data.name,
-        phone: data.phone,
-        role: data.role,
-        status: data.status,
-        createdAt: data.createdAt,
-        updatedAt: data.updatedAt,
-      };
-    });
+    const users = await User.find().select('-password');
 
     res.status(200).json({
       success: true,

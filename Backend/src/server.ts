@@ -1,12 +1,12 @@
 import * as dotenv from 'dotenv';
 import app from './app';
-import initializeFirebase from './config/firebase';
+import connectDB from './config/mongodb';
 
 // Load environment variables
 dotenv.config();
 
-// Initialize Firebase
-initializeFirebase();
+// Connect to MongoDB
+connectDB();
 
 const PORT = process.env.PORT || 5000;
 

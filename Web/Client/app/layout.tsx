@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { OrderProvider } from "@/lib/order-context"
 import { AuthProvider } from "@/lib/auth-context"
+import { CartProvider } from "@/lib/cart-context"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -29,7 +30,9 @@ export default function RootLayout({
     <html lang="vi">
       <body className={`font-sans antialiased`}>
         <AuthProvider>
-          <OrderProvider>{children}</OrderProvider>
+          <CartProvider>
+            <OrderProvider>{children}</OrderProvider>
+          </CartProvider>
         </AuthProvider>
         <Analytics />
       </body>

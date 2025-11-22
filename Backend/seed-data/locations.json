@@ -2,33 +2,57 @@
   {
     "type": "restaurant",
     "coords": {
-      "latitude": 10.762622,
-      "longitude": 106.660172
+      "latitude": 21.0285,
+      "longitude": 105.8542
     },
-    "address": "123 Nguyen Hue, District 1, Ho Chi Minh City"
+    "address": "36 Hang Bac, Hoan Kiem, Ha Noi"
   },
   {
     "type": "restaurant",
     "coords": {
-      "latitude": 10.773996,
-      "longitude": 106.700981
+      "latitude": 21.0297,
+      "longitude": 105.8549
     },
-    "address": "456 Vo Van Tan, District 3, Ho Chi Minh City"
+    "address": "12 Tran Hung Dao, Hoan Kiem, Ha Noi"
   },
   {
     "type": "restaurant",
     "coords": {
-      "latitude": 10.799474,
-      "longitude": 106.664548
+      "latitude": 21.0275,
+      "longitude": 105.8535
     },
-    "address": "789 Truong Chinh, Tan Binh, Ho Chi Minh City"
+    "address": "89 Hai Ba Trung, Hoan Kiem, Ha Noi"
+  },
+  {
+    "type": "restaurant",
+    "coords": {
+      "latitude": 21.0302,
+      "longitude": 105.8556
+    },
+    "address": "45 Le Duan, Hoan Kiem, Ha Noi"
+  },
+  {
+    "type": "restaurant",
+    "coords": {
+      "latitude": 21.0288,
+      "longitude": 105.8543
+    },
+    "address": "23 Nguyen Thai Hoc, Ba Dinh, Ha Noi"
+  },
+  {
+    "type": "restaurant",
+    "coords": {
+      "latitude": 21.0280,
+      "longitude": 105.8540
+    },
+    "address": "67 Tran Phu, Ba Dinh, Ha Noi"
   },
   {
     "type": "drone_station",
     "coords": {
-      "latitude": 10.78,
-      "longitude": 106.69
+      "latitude": 21.0290,
+      "longitude": 105.8545
     },
-    "address": "Main Drone Station, Ho Chi Minh City"
+    "address": "Main Drone Station, Ha Noi"
   }
 ]

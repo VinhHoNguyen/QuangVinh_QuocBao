@@ -1,0 +1,40 @@
+[
+  {
+    "_id": {"$oid": "675000000000000000000001"},
+    "orderId": "REF:orders[0]._id",
+    "amount": 130000,
+    "method": "e_wallet",
+    "status": "completed",
+    "transactionId": "TXN1732098765ABCD123",
+    "createdAt": {"$date": "2024-11-20T08:30:00.000Z"},
+    "updatedAt": {"$date": "2024-11-20T08:31:00.000Z"}
+  },
+  {
+    "_id": {"$oid": "675000000000000000000002"},
+    "orderId": "REF:orders[1]._id",
+    "amount": 105000,
+    "method": "cash",
+    "status": "pending",
+    "createdAt": {"$date": "2024-11-22T10:00:00.000Z"},
+    "updatedAt": {"$date": "2024-11-22T10:00:00.000Z"}
+  },
+  {
+    "_id": {"$oid": "675000000000000000000003"},
+    "orderId": "REF:orders[2]._id",
+    "amount": 120000,
+    "method": "credit_card",
+    "status": "completed",
+    "transactionId": "TXN1732187654EFGH456",
+    "createdAt": {"$date": "2024-11-22T11:00:00.000Z"},
+    "updatedAt": {"$date": "2024-11-22T11:01:00.000Z"}
+  },
+  {
+    "_id": {"$oid": "675000000000000000000004"},
+    "orderId": "REF:orders[3]._id",
+    "amount": 40000,
+    "method": "bank_transfer",
+    "status": "pending",
+    "createdAt": {"$date": "2024-11-22T12:00:00.000Z"},
+    "updatedAt": {"$date": "2024-11-22T12:00:00.000Z"}
+  }
+]

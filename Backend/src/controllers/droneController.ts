@@ -1,15 +1,14 @@
 import type { Response, NextFunction } from 'express';
-import { db } from '../config/firebase';
 import { AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
-import { Drone, DroneStatus, CreateDroneRequest, Location } from '../models/types';
+import { DroneStatus } from '../models/types';
 import {
-  COLLECTIONS,
   ERROR_MESSAGES,
   SUCCESS_MESSAGES,
   DEFAULT_DRONE_BATTERY,
   DEFAULT_DRONE_CURRENT_LOAD,
 } from '../models/constants';
+import Drone from '../models/Drone';
 
 // Create drone
 export const createDrone = async (
@@ -22,39 +21,23 @@ export const createDrone = async (
       throw new AppError(ERROR_MESSAGES.UNAUTHORIZED, 401);
     }
 
-    const { code, name, capacity, restaurantId }: CreateDroneRequest = req.body;
+    const { code, name, capacity } = req.body;
+    const { currentLocationId } = req.body;
 
-    // Create default location for drone
-    const defaultLocation: Omit<Location, '_id'> = {
-      type: 'drone_station' as any,
-      coords: { latitude: 0, longitude: 0 },
-      address: 'Default Station',
-    };
-
-    const locationRef = await db.collection(COLLECTIONS.LOCATIONS).add(defaultLocation);
-
-    const newDrone: Omit<Drone, '_id'> = {
+    const newDrone = await Drone.create({
       code,
       name,
-      restaurantId,
       status: DroneStatus.AVAILABLE,
       battery: DEFAULT_DRONE_BATTERY,
       capacity,
       currentLoad: DEFAULT_DRONE_CURRENT_LOAD,
-      currentLocationId: locationRef.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    const droneRef = await db.collection(COLLECTIONS.DRONES).add(newDrone);
+      currentLocationId,
+    });
 
     res.status(201).json({
       success: true,
       message: SUCCESS_MESSAGES.CREATED,
-      data: {
-        _id: droneRef.id,
-        ...newDrone,
-      },
+      data: newDrone,
     });
   } catch (error) {
     next(error);
@@ -68,24 +51,14 @@ export const getAllDrones = async (
   next: NextFunction
 ) => {
   try {
-    const { status, restaurantId } = req.query;
+    const { status } = req.query;
 
-    let query = db.collection(COLLECTIONS.DRONES);
-
+    let query: any = {};
     if (status) {
-      query = query.where('status', '==', status) as any;
+      query.status = status;
     }
 
-    if (restaurantId) {
-      query = query.where('restaurantId', '==', restaurantId) as any;
-    }
-
-    const dronesSnapshot = await query.get();
-
-    const drones = dronesSnapshot.docs.map((doc: any) => ({
-      _id: doc.id,
-      ...doc.data(),
-    }));
+    const drones = await Drone.find(query).populate('currentLocationId');
 
     res.status(200).json({
       success: true,
@@ -105,18 +78,15 @@ export const getDroneById = async (
   try {
     const { id } = req.params;
 
-    const droneDoc = await db.collection(COLLECTIONS.DRONES).doc(id).get();
+    const drone = await Drone.findById(id).populate('currentLocationId');
 
-    if (!droneDoc.exists) {
+    if (!drone) {
       throw new AppError('Drone not found', 404);
     }
 
     res.status(200).json({
       success: true,
-      data: {
-        _id: droneDoc.id,
-        ...droneDoc.data(),
-      },
+      data: drone,
     });
   } catch (error) {
     next(error);
@@ -130,15 +100,7 @@ export const getAvailableDrones = async (
   next: NextFunction
 ) => {
   try {
-    const dronesSnapshot = await db
-      .collection(COLLECTIONS.DRONES)
-      .where('status', '==', DroneStatus.AVAILABLE)
-      .get();
-
-    const drones = dronesSnapshot.docs.map((doc: any) => ({
-      _id: doc.id,
-      ...doc.data(),
-    }));
+    const drones = await Drone.find({ status: DroneStatus.AVAILABLE }).populate('currentLocationId');
 
     res.status(200).json({
       success: true,
@@ -163,23 +125,20 @@ export const updateDrone = async (
     const { id } = req.params;
     const updates = req.body;
 
-    const droneDoc = await db.collection(COLLECTIONS.DRONES).doc(id).get();
+    const drone = await Drone.findByIdAndUpdate(
+      id,
+      updates,
+      { new: true }
+    );
 
-    if (!droneDoc.exists) {
+    if (!drone) {
       throw new AppError('Drone not found', 404);
     }
-
-    await db
-      .collection(COLLECTIONS.DRONES)
-      .doc(id)
-      .update({
-        ...updates,
-        updatedAt: new Date(),
-      });
 
     res.status(200).json({
       success: true,
       message: SUCCESS_MESSAGES.UPDATED,
+      data: drone,
     });
   } catch (error) {
     next(error);
@@ -200,20 +159,20 @@ export const updateDroneStatus = async (
     const { id } = req.params;
     const { status } = req.body;
 
-    const droneDoc = await db.collection(COLLECTIONS.DRONES).doc(id).get();
+    const drone = await Drone.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    );
 
-    if (!droneDoc.exists) {
+    if (!drone) {
       throw new AppError('Drone not found', 404);
     }
-
-    await db.collection(COLLECTIONS.DRONES).doc(id).update({
-      status,
-      updatedAt: new Date(),
-    });
 
     res.status(200).json({
       success: true,
       message: 'Drone status updated successfully',
+      data: drone,
     });
   } catch (error) {
     next(error);
@@ -233,13 +192,11 @@ export const deleteDrone = async (
 
     const { id } = req.params;
 
-    const droneDoc = await db.collection(COLLECTIONS.DRONES).doc(id).get();
+    const drone = await Drone.findByIdAndDelete(id);
 
-    if (!droneDoc.exists) {
+    if (!drone) {
       throw new AppError('Drone not found', 404);
     }
-
-    await db.collection(COLLECTIONS.DRONES).doc(id).delete();
 
     res.status(200).json({
       success: true,

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import {
   ShoppingCart,
   Star,
@@ -43,8 +43,13 @@ export default function Home() {
   const { user, logout } = useAuth()
   
   // Fetch real data from backend API
-  const { restaurants, loading: restaurantsLoading } = useRestaurants("active")
+  const { restaurants, loading: restaurantsLoading, error: restaurantsError } = useRestaurants("active")
   const { products: allProducts, loading: productsLoading } = useProducts({ available: true })
+
+  // Debug: Log restaurants data
+  useEffect(() => {
+    console.log('Restaurants loaded:', restaurants.length, restaurants)
+  }, [restaurants])
 
   // Get unique categories from products
   const categories = useMemo(() => {
@@ -355,6 +360,14 @@ export default function Home() {
                 </div>
               </Link>
             ))}
+          </div>
+        ) : restaurantsError ? (
+          <div className="text-center py-12">
+            <p className="text-destructive text-lg mb-4">❌ Lỗi khi tải danh sách nhà hàng</p>
+            <p className="text-muted-foreground text-sm mb-4">{restaurantsError.message}</p>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Thử lại
+            </Button>
           </div>
         ) : (
           <div className="text-center py-12">

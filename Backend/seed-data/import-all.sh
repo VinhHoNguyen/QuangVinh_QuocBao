@@ -52,6 +52,34 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+echo "Step 6: Importing orders..."
+mongoimport --db "$DB_NAME" --collection orders --file orders.json --jsonArray --drop
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to import orders"
+    exit 1
+fi
+
+echo "Step 7: Importing payments..."
+mongoimport --db "$DB_NAME" --collection payments --file payments.json --jsonArray --drop
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to import payments"
+    exit 1
+fi
+
+echo "Step 8: Importing deliveries..."
+mongoimport --db "$DB_NAME" --collection deliveries --file deliveries.json --jsonArray --drop
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to import deliveries"
+    exit 1
+fi
+
+echo "Step 9: Importing carts..."
+mongoimport --db "$DB_NAME" --collection carts --file carts.json --jsonArray --drop
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to import drones"
+    exit 1
+fi
+
 echo ""
 echo "========================================"
 echo "All data imported successfully!"

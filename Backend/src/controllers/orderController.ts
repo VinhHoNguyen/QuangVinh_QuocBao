@@ -71,7 +71,7 @@ export const createOrder = async (
 
     // Create order
     const newOrder: Omit<Order, '_id'> = {
-      userId: req.user.uid,
+      userId: req.user._id,
       restaurantId,
       items: orderItems,
       totalPrice,
@@ -216,7 +216,7 @@ export const getUserOrders = async (
 
     const ordersSnapshot = await db
       .collection(COLLECTIONS.ORDERS)
-      .where('userId', '==', req.user.uid)
+      .where('userId', '==', req.user._id)
       .orderBy('createdAt', 'desc')
       .get();
 

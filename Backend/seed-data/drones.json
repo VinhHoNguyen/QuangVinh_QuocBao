@@ -6,7 +6,6 @@
     "battery": 100,
     "currentLoad": 0,
     "status": "available",
-    "currentLocationId": "DRONE_STATION_ID",
     "createdAt": {"$date": "2024-01-01T00:00:00.000Z"},
     "updatedAt": {"$date": "2024-01-01T00:00:00.000Z"}
   },
@@ -17,7 +16,6 @@
     "battery": 85,
     "currentLoad": 0,
     "status": "available",
-    "currentLocationId": "DRONE_STATION_ID",
     "createdAt": {"$date": "2024-01-01T00:00:00.000Z"},
     "updatedAt": {"$date": "2024-01-01T00:00:00.000Z"}
   },
@@ -28,7 +26,6 @@
     "battery": 100,
     "currentLoad": 0,
     "status": "available",
-    "currentLocationId": "DRONE_STATION_ID",
     "createdAt": {"$date": "2024-01-01T00:00:00.000Z"},
     "updatedAt": {"$date": "2024-01-01T00:00:00.000Z"}
   },
@@ -39,7 +36,6 @@
     "battery": 60,
     "currentLoad": 0,
     "status": "maintenance",
-    "currentLocationId": "DRONE_STATION_ID",
     "createdAt": {"$date": "2024-01-01T00:00:00.000Z"},
     "updatedAt": {"$date": "2024-01-01T00:00:00.000Z"}
   }

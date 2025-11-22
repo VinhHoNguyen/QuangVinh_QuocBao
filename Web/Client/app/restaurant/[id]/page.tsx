@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, use } from "react"
 import { ArrowLeft, Star, Search, ChevronRight, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -14,15 +14,15 @@ interface PageProps {
   params: Promise<{ id: string }>
 }
 
-async function RestaurantPage({ params }: PageProps) {
-  const { id } = await params
+function RestaurantPage({ params }: PageProps) {
+  const { id } = use(params)
 
   return <RestaurantContent restaurantId={id} />
 }
 
 function RestaurantContent({ restaurantId }: { restaurantId: string }) {
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState<string>("all")
+  const [selectedCategory, setSelectedCategory] = useState<string>("Tất cả")
   const [sortBy, setSortBy] = useState<"default" | "price-asc" | "price-desc" | "rating">("default")
   const [authOpen, setAuthOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(6)
@@ -39,7 +39,7 @@ function RestaurantContent({ restaurantId }: { restaurantId: string }) {
   const filteredAndSorted = useMemo(() => {
     let result = restaurantDishes
 
-    if (selectedCategory !== "all") {
+    if (selectedCategory !== "all" && selectedCategory !== "Tất cả") {
       result = result.filter((dish) => dish.category === selectedCategory)
     }
 
@@ -60,7 +60,7 @@ function RestaurantContent({ restaurantId }: { restaurantId: string }) {
     }
 
     return result
-  }, [searchQuery, selectedCategory, sortBy])
+  }, [searchQuery, selectedCategory, sortBy, restaurantDishes])
 
   const visibleDishes = filteredAndSorted.slice(0, visibleCount)
 
@@ -76,6 +76,17 @@ function RestaurantContent({ restaurantId }: { restaurantId: string }) {
       image: dish.image,
       restaurantId: dish.restaurantId,
     })
+  }
+
+  if (restaurantLoading || dishesLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Đang tải dữ liệu...</p>
+        </div>
+      </div>
+    )
   }
 
   if (!restaurant) {
@@ -158,9 +169,9 @@ function RestaurantContent({ restaurantId }: { restaurantId: string }) {
               {categories.map((cat) => (
                 <button
                   key={cat}
-                  onClick={() => setSelectedCategory(cat === "Tất cả" ? "all" : cat)}
+                  onClick={() => setSelectedCategory(cat)}
                   className={`px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all ${
-                    (cat === "Tất cả" ? selectedCategory === "all" : selectedCategory === cat)
+                    selectedCategory === cat
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-foreground hover:bg-border"
                   }`}
@@ -224,7 +235,7 @@ function RestaurantContent({ restaurantId }: { restaurantId: string }) {
                 {/* Rating */}
                 <div className="flex items-center gap-1">
                   <Star className="w-4 h-4 fill-primary text-primary" />
-                  <span className="font-semibold text-foreground">{dish.rating}</span>
+                  <span className="font-semibold text-foreground">{dish.rating.toFixed(2)}</span>
                   <span className="text-sm text-muted-foreground">({dish.reviews})</span>
                 </div>
 

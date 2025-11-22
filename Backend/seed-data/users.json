@@ -30,6 +30,16 @@
     "updatedAt": {"$date": "2024-01-01T00:00:00.000Z"}
   },
   {
+    "email": "owner3@restaurant.com",
+    "name": "Le Van E",
+    "password": "$2a$10$XQq7Z8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5Y",
+    "phone": "0965432108",
+    "role": "restaurant_owner",
+    "status": "active",
+    "createdAt": {"$date": "2024-01-01T00:00:00.000Z"},
+    "updatedAt": {"$date": "2024-01-01T00:00:00.000Z"}
+  },
+  {
     "email": "customer1@gmail.com",
     "name": "Le Van C",
     "password": "$2a$10$XQq7Z8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5Y",
@@ -44,6 +54,16 @@
     "name": "Pham Thi D",
     "password": "$2a$10$XQq7Z8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5Y",
     "phone": "0954321098",
+    "role": "customer",
+    "status": "active",
+    "createdAt": {"$date": "2024-01-01T00:00:00.000Z"},
+    "updatedAt": {"$date": "2024-01-01T00:00:00.000Z"}
+  },
+  {
+    "email": "customer3@gmail.com",
+    "name": "Hoang Van F",
+    "password": "$2a$10$XQq7Z8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5YqZ8KvXxJ5Y",
+    "phone": "0943210987",
     "role": "customer",
     "status": "active",
     "createdAt": {"$date": "2024-01-01T00:00:00.000Z"},

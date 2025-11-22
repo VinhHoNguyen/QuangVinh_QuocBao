@@ -272,31 +272,23 @@ const convertAPIProduct = (apiProduct: APIProduct): Dish => {
   }
 }
 
-// API functions to fetch real data
+// API functions - NO MOCK DATA FALLBACK
 export const fetchRestaurants = async (status = "active"): Promise<Restaurant[]> => {
-  try {
-    const response = await restaurantAPI.getAll(status)
-    if (response.success && response.data) {
-      return response.data.map(convertAPIRestaurant)
-    }
-    return restaurants // Fallback to mock data
-  } catch (error) {
-    console.error("Error fetching restaurants:", error)
-    return restaurants // Fallback to mock data
+  const response = await restaurantAPI.getAll(status)
+  if (response.success && response.data) {
+    return response.data.map(convertAPIRestaurant)
   }
+  console.error('API returned unsuccessful response:', response)
+  return []
 }
 
 export const fetchRestaurantById = async (id: string): Promise<Restaurant | null> => {
-  try {
-    const response = await restaurantAPI.getById(id)
-    if (response.success && response.data) {
-      return convertAPIRestaurant(response.data)
-    }
-    return restaurants.find((r) => r.id === id) || null
-  } catch (error) {
-    console.error("Error fetching restaurant:", error)
-    return restaurants.find((r) => r.id === id) || null
+  const response = await restaurantAPI.getById(id)
+  if (response.success && response.data) {
+    return convertAPIRestaurant(response.data)
   }
+  console.error('API returned unsuccessful response for restaurant:', id, response)
+  return null
 }
 
 export const fetchProducts = async (params?: {
@@ -304,40 +296,28 @@ export const fetchProducts = async (params?: {
   available?: boolean
   restaurantId?: string
 }): Promise<Dish[]> => {
-  try {
-    const response = await productAPI.getAll(params)
-    if (response.success && response.data) {
-      return response.data.map(convertAPIProduct)
-    }
-    return dishes // Fallback to mock data
-  } catch (error) {
-    console.error("Error fetching products:", error)
-    return dishes // Fallback to mock data
+  const response = await productAPI.getAll(params)
+  if (response.success && response.data) {
+    return response.data.map(convertAPIProduct)
   }
+  console.error('API returned unsuccessful response:', response)
+  return []
 }
 
 export const fetchProductsByRestaurant = async (restaurantId: string): Promise<Dish[]> => {
-  try {
-    const response = await productAPI.getByRestaurant(restaurantId)
-    if (response.success && response.data) {
-      return response.data.map(convertAPIProduct)
-    }
-    return dishes.filter((d) => d.restaurantId === restaurantId)
-  } catch (error) {
-    console.error("Error fetching products by restaurant:", error)
-    return dishes.filter((d) => d.restaurantId === restaurantId)
+  const response = await productAPI.getByRestaurant(restaurantId)
+  if (response.success && response.data) {
+    return response.data.map(convertAPIProduct)
   }
+  console.error('API returned unsuccessful response for restaurant products:', restaurantId, response)
+  return []
 }
 
 export const fetchProductById = async (id: string): Promise<Dish | null> => {
-  try {
-    const response = await productAPI.getById(id)
-    if (response.success && response.data) {
-      return convertAPIProduct(response.data)
-    }
-    return dishes.find((d) => d.id === id) || null
-  } catch (error) {
-    console.error("Error fetching product:", error)
-    return dishes.find((d) => d.id === id) || null
+  const response = await productAPI.getById(id)
+  if (response.success && response.data) {
+    return convertAPIProduct(response.data)
   }
+  console.error('API returned unsuccessful response for product:', id, response)
+  return null
 }

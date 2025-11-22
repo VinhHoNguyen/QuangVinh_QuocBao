@@ -34,6 +34,7 @@ export interface Restaurant {
   maxOrder: number;
   rating: number;
   status: 'active' | 'inactive' | 'pending' | 'closed';
+  products?: Product[]; // Virtual populate from backend
   createdAt: string;
   updatedAt: string;
 }
@@ -142,11 +143,17 @@ const apiRequest = async <T = any>(
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || data.message || 'API request failed');
+      console.error(`API Error ${response.status}:`, data);
+      throw new Error(data.error || data.message || `HTTP ${response.status}: API request failed`);
     }
 
     return data;
-  } catch (error) {
+  } catch (error: any) {
+    // Network error or fetch failed
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      console.error('Network Error: Cannot connect to backend at', API_URL);
+      throw new Error(`Cannot connect to server at ${API_URL}. Is the backend running?`);
+    }
     console.error('API Error:', error);
     throw error;
   }

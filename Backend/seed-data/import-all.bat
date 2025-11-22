@@ -1,9 +1,12 @@
 @echo off
 REM Batch script to import all JSON files into MongoDB and update references
-REM Usage: import-all.bat [database_name]
+REM Usage: import-all.bat [database_name] [mongodb_uri]
 
 SET DB_NAME=%1
-IF "%DB_NAME%"=="" SET DB_NAME=food_delivery
+IF "%DB_NAME%"=="" SET DB_NAME=CNPM
+
+SET MONGODB_URI=%2
+IF "%MONGODB_URI%"=="" SET MONGODB_URI=mongodb://localhost:27017
 
 echo ========================================
 echo MongoDB Data Import Script
@@ -56,6 +59,38 @@ echo Step 5: Importing drones...
 mongoimport --db %DB_NAME% --collection drones --file drones.json --jsonArray --drop
 IF %ERRORLEVEL% NEQ 0 (
     echo ERROR: Failed to import drones
+    pause
+    exit /b 1
+)
+
+echo Step 6: Importing orders...
+mongoimport --db %DB_NAME% --collection orders --file orders.json --jsonArray --drop
+IF %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to import orders
+    pause
+    exit /b 1
+)
+
+echo Step 7: Importing payments...
+mongoimport --db %DB_NAME% --collection payments --file payments.json --jsonArray --drop
+IF %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to import payments
+    pause
+    exit /b 1
+)
+
+echo Step 8: Importing deliveries...
+mongoimport --db %DB_NAME% --collection deliveries --file deliveries.json --jsonArray --drop
+IF %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to import deliveries
+    pause
+    exit /b 1
+)
+
+echo Step 9: Importing carts...
+mongoimport --db %DB_NAME% --collection carts --file carts.json --jsonArray --drop
+IF %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to import carts
     pause
     exit /b 1
 )
