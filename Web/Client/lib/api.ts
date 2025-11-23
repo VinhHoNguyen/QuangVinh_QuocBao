@@ -86,7 +86,8 @@ export interface Order {
   restaurantId: string;
   items: OrderItem[];
   totalPrice: number;
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivering' | 'delivered' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivering' | 'delivered' | 'completed' | 'cancelled';
+  deliveryMethod: 'drone' | 'bike' | 'car';
   paymentMethod: 'cash' | 'credit_card' | 'debit_card' | 'e_wallet' | 'bank_transfer';
   paymentStatus: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded';
   shippingAddress: ShippingAddress;

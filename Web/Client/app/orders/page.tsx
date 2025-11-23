@@ -16,9 +16,10 @@ const getStatusBadge = (status: string) => {
     pending: { label: "Chờ xác nhận", variant: "secondary", icon: Clock },
     confirmed: { label: "Đã xác nhận", variant: "secondary", icon: CheckCircle },
     preparing: { label: "Đang chuẩn bị", variant: "secondary", icon: Clock },
-    ready: { label: "Sẵn sàng", variant: "default", icon: Package },
+    ready: { label: "Sẵn sàng giao", variant: "default", icon: Package },
     delivering: { label: "Đang giao", variant: "default", icon: Package },
     delivered: { label: "Đã giao", variant: "default", icon: CheckCircle },
+    completed: { label: "✅ Hoàn thành", variant: "default", icon: CheckCircle },
     cancelled: { label: "Đã hủy", variant: "destructive", icon: null },
   }
   return statusMap[status] || { label: status, variant: "secondary", icon: Clock }
@@ -86,7 +87,7 @@ export default function OrdersPage() {
   const allOrders = orders
   const preparingOrders = orders.filter((o) => ['pending', 'confirmed', 'preparing', 'ready'].includes(o.status))
   const deliveringOrders = orders.filter((o) => o.status === "delivering")
-  const deliveredOrders = orders.filter((o) => o.status === "delivered")
+  const completedOrders = orders.filter((o) => ['delivered', 'completed'].includes(o.status))
 
   const OrderCard = ({ order }: { order: Order }) => {
     const statusInfo = getStatusBadge(order.status)
@@ -146,9 +147,14 @@ export default function OrdersPage() {
       <div className="max-w-4xl mx-auto px-4">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-foreground">Đơn hàng của tôi</h1>
-          <Link href="/">
-            <Button variant="outline">Tiếp tục mua hàng</Button>
-          </Link>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={loadOrders}>
+              🔄 Tải lại
+            </Button>
+            <Link href="/">
+              <Button variant="outline">Tiếp tục mua hàng</Button>
+            </Link>
+          </div>
         </div>
 
         {orders.length === 0 ? (
@@ -165,7 +171,7 @@ export default function OrdersPage() {
               <TabsTrigger value="all">Tất cả ({allOrders.length})</TabsTrigger>
               <TabsTrigger value="preparing">Đang xử lý ({preparingOrders.length})</TabsTrigger>
               <TabsTrigger value="delivering">Đang giao ({deliveringOrders.length})</TabsTrigger>
-              <TabsTrigger value="delivered">Đã giao ({deliveredOrders.length})</TabsTrigger>
+              <TabsTrigger value="completed">Hoàn thành ({completedOrders.length})</TabsTrigger>
             </TabsList>
 
             <TabsContent value="all" className="space-y-4">
@@ -192,11 +198,11 @@ export default function OrdersPage() {
               )}
             </TabsContent>
 
-            <TabsContent value="delivered" className="space-y-4">
-              {deliveredOrders.length === 0 ? (
+            <TabsContent value="completed" className="space-y-4">
+              {completedOrders.length === 0 ? (
                 <Card className="p-8 text-center text-muted-foreground">Không có đơn hàng nào</Card>
               ) : (
-                deliveredOrders.map((order) => <OrderCard key={order._id} order={order} />)
+                completedOrders.map((order) => <OrderCard key={order._id} order={order} />)
               )}
             </TabsContent>
           </Tabs>

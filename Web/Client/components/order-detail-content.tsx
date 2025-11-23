@@ -1,15 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useOrder } from "@/lib/order-context"
+import { orderAPI, Order } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import OrderTrackingTimeline from "@/components/order-tracking-timeline"
 import ShipperInfoCard from "@/components/shipper-info-card"
 import DroneStatusCard from "@/components/drone-status-card"
-import OrderNotificationToast, { type NotificationMessage } from "@/components/order-notification-toast"
-import { ChevronLeft, Star } from "lucide-react"
+import { ChevronLeft, Star, Loader2 } from "lucide-react"
 import Link from "next/link"
 import dynamic from "next/dynamic"
+import { toast } from "sonner"
 
 // Dynamic import to avoid SSR issues with Leaflet
 const OrderTrackingMap = dynamic(
@@ -28,68 +28,101 @@ const OrderTrackingMap = dynamic(
 )
 
 export default function OrderDetailContent({ orderId }: { orderId: string }) {
-  const { getOrderById, updateOrderStatus } = useOrder()
-  const order = getOrderById(orderId)
-  const [notifications, setNotifications] = useState<NotificationMessage[]>([])
+  const [order, setOrder] = useState<Order | null>(null)
+  const [loading, setLoading] = useState(true)
   const [isReviewing, setIsReviewing] = useState(false)
   const [rating, setRating] = useState(5)
   const [review, setReview] = useState("")
+  const [prevStatus, setPrevStatus] = useState<string>("")
 
+  // Fetch order on mount
   useEffect(() => {
-    if (!order || order.status === "delivered") return
+    fetchOrder()
+  }, [orderId])
 
-    const statusSequence = ["preparing", "on-the-way", "delivered"]
-    const currentIndex = statusSequence.indexOf(order.status)
+  // Auto-complete order when status is "delivering" (for demo)
+  useEffect(() => {
+    if (!order) return
 
-    if (currentIndex < statusSequence.length - 1) {
+    console.log('[Order Auto-Complete] Current status:', order.status)
+
+    if (order.status === 'delivering') {
+      console.log('[Order Auto-Complete] Starting 4 second timer...')
       const timer = setTimeout(() => {
-        const nextStatus = statusSequence[currentIndex + 1]
-        updateOrderStatus(orderId, nextStatus as any)
+        console.log('[Order Auto-Complete] Timer fired, completing order...')
+        completeOrder()
+      }, 4000) // Auto complete after 4 seconds
 
-        // Add notification
-        const statusMessages: Record<string, { title: string; message: string }> = {
-          "on-the-way": {
-            title: "Đơn hàng đang được giao",
-            message: `${order.deliveryMethod === "drone" ? "Drone" : "Tài xế"} đang trên đường đến bạn`,
-          },
-          delivered: {
-            title: "Đã giao thành công",
-            message: "Cảm ơn bạn đã mua hàng. Hãy đánh giá để giúp chúng tôi cải thiện",
-          },
-        }
-
-        if (statusMessages[nextStatus]) {
-          const msg = statusMessages[nextStatus]
-          addNotification({
-            title: msg.title,
-            message: msg.message,
-            type: nextStatus === "delivered" ? "success" : "info",
-          })
-        }
-      }, 8000)
-
-      return () => clearTimeout(timer)
+      return () => {
+        console.log('[Order Auto-Complete] Cleaning up timer')
+        clearTimeout(timer)
+      }
     }
-  }, [order, orderId, updateOrderStatus])
+  }, [order?._id, order?.status])
 
-  const addNotification = (msg: Omit<NotificationMessage, "id">) => {
-    const id = Date.now().toString()
-    const notification: NotificationMessage = {
-      id,
-      ...msg,
-      duration: msg.duration || 5000,
-    }
-    setNotifications((prev) => [...prev, notification])
-
-    if (msg.duration) {
-      setTimeout(() => {
-        removeNotification(id)
-      }, msg.duration)
+  const completeOrder = async () => {
+    try {
+      const response = await orderAPI.updateStatus(orderId, 'completed')
+      if (response.success) {
+        toast.success('✅ Đơn hàng đã hoàn thành', {
+          description: 'Cảm ơn bạn đã sử dụng dịch vụ!'
+        })
+        fetchOrder() // Refresh order
+      }
+    } catch (error) {
+      console.error('Error completing order:', error)
     }
   }
 
-  const removeNotification = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id))
+  const fetchOrder = async () => {
+    try {
+      const response = await orderAPI.getById(orderId)
+      if (response.success && response.data) {
+        const newOrder = response.data
+        
+        // Notify status change
+        if (prevStatus && prevStatus !== newOrder.status) {
+          const statusMessages: Record<string, { title: string; message: string }> = {
+            preparing: {
+              title: "🔥 Đang chuẩn bị",
+              message: "Nhà hàng đang chuẩn bị món ăn của bạn",
+            },
+            ready: {
+              title: "✅ Sẵn sàng giao",
+              message: "Đơn hàng đã sẵn sàng, chờ shipper nhận",
+            },
+            delivering: {
+              title: "🚚 Đang giao hàng",
+              message: "Shipper đã nhận hàng và đang giao đến bạn. Sẽ tự động hoàn thành sau 4 giây.",
+            },
+            completed: {
+              title: "🎉 Đã hoàn thành",
+              message: "Chúc bạn ngon miệng!",
+            },
+          }
+
+          if (statusMessages[newOrder.status]) {
+            const msg = statusMessages[newOrder.status]
+            toast.success(msg.title, { description: msg.message })
+          }
+        }
+        
+        setOrder(newOrder)
+        setPrevStatus(newOrder.status)
+      }
+    } catch (error) {
+      console.error('Error fetching order:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   if (!order) {
@@ -110,8 +143,6 @@ export default function OrderDetailContent({ orderId }: { orderId: string }) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <OrderNotificationToast notifications={notifications} onClose={removeNotification} />
-
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-4">
@@ -119,8 +150,8 @@ export default function OrderDetailContent({ orderId }: { orderId: string }) {
             <ChevronLeft className="w-5 h-5" />
             Quay lại danh sách đơn
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">{order.id}</h1>
-          <p className="text-gray-600 mt-1">Đặt lúc {order.createdAt?.toLocaleString("vi-VN")}</p>
+          <h1 className="text-3xl font-bold text-gray-900">#{order._id.slice(-8).toUpperCase()}</h1>
+          <p className="text-gray-600 mt-1">Đặt lúc {new Date(order.createdAt).toLocaleString("vi-VN")}</p>
         </div>
       </div>
 
@@ -128,58 +159,29 @@ export default function OrderDetailContent({ orderId }: { orderId: string }) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Timeline */}
-            <OrderTrackingTimeline
-              timeline={order.timeline}
-              currentStatus={order.status}
-              estimatedDeliveryTime={order.estimatedDeliveryTime}
+            {/* Map - Always show for visualization */}
+            <OrderTrackingMap
+              latitude={order.shippingAddress.coordinates?.latitude || 21.0285}
+              longitude={order.shippingAddress.coordinates?.longitude || 105.8542}
+              deliveryMethod={order.deliveryMethod || 'drone'}
+              recipientLat={order.shippingAddress.coordinates?.latitude || 21.0285}
+              recipientLng={order.shippingAddress.coordinates?.longitude || 105.8542}
+              restaurantLat={21.0278}
+              restaurantLng={105.8342}
+              status={order.status}
             />
-
-            {/* Map */}
-            {order.driverInfo && (
-              <OrderTrackingMap
-                latitude={order.driverInfo.latitude}
-                longitude={order.driverInfo.longitude}
-                deliveryMethod={order.deliveryMethod}
-                recipientLat={order.recipientInfo.address.coordinates?.latitude || 21.0285}
-                recipientLng={order.recipientInfo.address.coordinates?.longitude || 105.8542}
-                restaurantLat={21.0278}
-                restaurantLng={105.8342}
-                status={order.status}
-              />
-            )}
-
-            {/* Shipper or Drone Info */}
-            {order.deliveryMethod === "drone" && order.droneInfo ? (
-              <DroneStatusCard
-                batteryLevel={order.droneInfo.batteryLevel}
-                altitude={order.droneInfo.altitude}
-                speed={order.droneInfo.speed}
-                estimatedArrivalTime={order.droneInfo.estimatedArrivalTime}
-              />
-            ) : order.driverInfo ? (
-              <ShipperInfoCard
-                name={order.driverInfo.name}
-                phone={order.driverInfo.phone}
-                vehicle={order.driverInfo.vehicle}
-                rating={order.driverInfo.rating}
-                avatar={order.driverInfo.avatar}
-              />
-            ) : null}
 
             {/* Order Items */}
             <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Danh sách món hàng</h3>
               <div className="space-y-3">
-                {order.items.map((item) => (
-                  <div key={item.id} className="flex gap-3 pb-3 border-b border-gray-100 last:border-0">
-                    <img
-                      src={item.image || "/placeholder.svg"}
-                      alt={item.name}
-                      className="w-16 h-16 rounded-lg object-cover"
-                    />
+                {order.items.map((item, index) => (
+                  <div key={item._id || index} className="flex gap-3 pb-3 border-b border-gray-100 last:border-0">
+                    <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center text-2xl">
+                      🍜
+                    </div>
                     <div className="flex-1">
-                      <p className="font-semibold text-gray-900">{item.name}</p>
+                      <p className="font-semibold text-gray-900">{item.productName}</p>
                       <p className="text-sm text-gray-600">x{item.quantity}</p>
                     </div>
                     <p className="font-semibold text-gray-900">
@@ -209,12 +211,9 @@ export default function OrderDetailContent({ orderId }: { orderId: string }) {
             <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Địa chỉ nhận hàng</h3>
               <div className="space-y-2 text-gray-700">
-                <p className="font-semibold">{order.recipientInfo.fullName}</p>
-                <p>{order.recipientInfo.phone}</p>
-                <p>{order.recipientInfo.address}</p>
-                {order.recipientInfo.notes && (
-                  <p className="text-sm italic text-gray-600">Ghi chú: {order.recipientInfo.notes}</p>
-                )}
+                <p>{order.shippingAddress.street}</p>
+                <p>{order.shippingAddress.ward}, {order.shippingAddress.district}</p>
+                <p>{order.shippingAddress.city}</p>
               </div>
             </div>
 
