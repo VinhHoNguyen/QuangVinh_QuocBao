@@ -61,10 +61,8 @@ export default function ProfileScreen({ navigation }: any) {
             <Text style={styles.btnText}>Xem lịch sử đơn hàng</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('OrderHistory')}>
-            <Text style={styles.btnText}>Theo dõi đơn hàng</Text>
-          </TouchableOpacity>
-          
+
+
           <TouchableOpacity style={[styles.btn, styles.logout]} onPress={() => { setUser(null); }}>
             <Text style={styles.btnText}>Đăng xuất</Text>
           </TouchableOpacity>

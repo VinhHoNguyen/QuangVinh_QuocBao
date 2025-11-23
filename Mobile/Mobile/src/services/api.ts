@@ -18,6 +18,7 @@ class ApiService {
     // Add token to requests
     this.api.interceptors.request.use(async (config) => {
       const token = await AsyncStorage.getItem('authToken');
+      console.log('🔑 Token for request:', config.url, token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -45,13 +46,26 @@ class ApiService {
       name,
       phone,
     });
+    // Backend returns: { success: true, data: { token: "...", ... } }
+    // So token is in response.data.data.token
+    if (response.data.data?.token) {
+      await AsyncStorage.setItem('authToken', response.data.data.token);
+      console.log('💾 Token saved (register):', response.data.data.token.substring(0, 20) + '...');
+    } else {
+      console.log('⚠️ No token in register response!', response.data);
+    }
     return response.data;
   }
 
   async login(email: string, password: string) {
     const response = await this.api.post('/auth/login', { email, password });
-    if (response.data.token) {
-      await AsyncStorage.setItem('authToken', response.data.token);
+    // Backend returns: { success: true, data: { token: "...", ... } }
+    // So token is in response.data.data.token
+    if (response.data.data?.token) {
+      await AsyncStorage.setItem('authToken', response.data.data.token);
+      console.log('💾 Token saved (login):', response.data.data.token.substring(0, 20) + '...');
+    } else {
+      console.log('⚠️ No token in login response!', response.data);
     }
     return response.data;
   }
@@ -135,7 +149,7 @@ class ApiService {
   }
 
   async getOrders() {
-    const response = await this.api.get('/orders');
+    const response = await this.api.get('/orders/me');
     return response.data;
   }
 

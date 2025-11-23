@@ -169,7 +169,7 @@ export default function TrackingScreen({ route, navigation }: any) {
 
       <ScrollView style={styles.content}>
         {/* Map */}
-        {(order.status === 'delivering' || order.status === 'preparing') && (
+        {order && (
           <View style={styles.mapContainer}>
             <MapView
               ref={mapRef}

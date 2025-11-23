@@ -49,8 +49,8 @@ export default function LoginScreen({ navigation }: any) {
         style={styles.input}
       />
 
-      <TouchableOpacity 
-        onPress={handleLogin} 
+      <TouchableOpacity
+        onPress={handleLogin}
         style={[styles.loginBtn, loading && { opacity: 0.6 }]}
         disabled={loading}
       >
@@ -74,8 +74,8 @@ export default function LoginScreen({ navigation }: any) {
       {/* Test Account Info */}
       <View style={styles.infoBox}>
         <Text style={styles.infoTitle}>Tài khoản test:</Text>
-        <Text style={styles.infoText}>Email: customer1@gmail.com</Text>
-        <Text style={styles.infoText}>Pass: Customer@123</Text>
+        <Text style={styles.infoText}>Email: baotran7420@gmail.com</Text>
+        <Text style={styles.infoText}>Pass: 123456</Text>
       </View>
     </View>
   );

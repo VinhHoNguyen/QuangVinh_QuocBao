@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
+import { apiService } from '../services/api';
 import { Colors } from '../constants/Colors';
 
 export default function CheckoutScreen({ navigation }: any) {
@@ -25,7 +26,7 @@ export default function CheckoutScreen({ navigation }: any) {
   // Hình thức vận chuyển
   const [deliveryType, setDeliveryType] = useState<'standard' | 'drone'>('standard');
 
-  // Hình thức thanh toán – ĐÃ THÊM 'transfer'
+  // Hình thức thanh toán
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online' | 'transfer'>('cash');
 
   const [loading, setLoading] = useState(false);
@@ -50,27 +51,52 @@ export default function CheckoutScreen({ navigation }: any) {
     try {
       setLoading(true);
 
-      // TẠO ĐƠN HÀNG (gửi backend sau)
+      // Parse address into components
+      const addressParts = address.split(',').map(s => s.trim());
+      const street = addressParts[0] || address;
+      const ward = addressParts[1] || 'Phường 1';
+      const district = addressParts[2] || 'Quận 1';
+      const city = addressParts[3] || 'TP. Hồ Chí Minh';
+
+      // Prepare order data for API
       const orderData = {
-        userId: user?.id,
         restaurantId: cart[0].restaurantId,
-        restaurantName: cart[0].restaurantName,
-        items: cart,
-        total,
-        deliveryType,
-        paymentMethod,
-        address,
+        items: cart.map(item => ({
+          productId: item.id,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        paymentMethod: paymentMethod === 'online' ? 'e_wallet'
+          : paymentMethod === 'transfer' ? 'bank_transfer' : 'cash',
+        shippingAddress: {
+          street,
+          ward,
+          district,
+          city,
+          coordinates: {
+            latitude: 10.762622 + (Math.random() - 0.5) * 0.01,
+            longitude: 106.660172 + (Math.random() - 0.5) * 0.01,
+          },
+        },
       };
 
-      // GỌI API (sẽ thêm sau)
-      console.log('Đặt hàng:', orderData);
+      // GỌI API ĐỂ TẠO ĐƠN HÀNG
+      await apiService.createOrder(orderData);
 
       clearCart();
       Alert.alert('Thành công!', 'Đơn hàng đã được đặt!', [
-        { text: 'OK', onPress: () => navigation.replace('Main') }
+        {
+          text: 'Xem đơn hàng',
+          onPress: () => navigation.navigate('Main', { screen: 'OrderHistory' })
+        },
+        {
+          text: 'OK',
+          onPress: () => navigation.replace('Main')
+        }
       ]);
-    } catch (error) {
-      Alert.alert('Lỗi', 'Đặt hàng thất bại');
+    } catch (error: any) {
+      console.error('Checkout error:', error);
+      Alert.alert('Lỗi', error.response?.data?.message || 'Đặt hàng thất bại. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
