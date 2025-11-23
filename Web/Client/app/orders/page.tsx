@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Package, Clock, CheckCircle, Star, ArrowRight, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 const getStatusBadge = (status: string) => {
   const statusMap: Record<string, { label: string; variant: any; icon: any }> = {
@@ -19,7 +20,7 @@ const getStatusBadge = (status: string) => {
     ready: { label: "Sẵn sàng giao", variant: "default", icon: Package },
     delivering: { label: "Đang giao", variant: "default", icon: Package },
     delivered: { label: "Đã giao", variant: "default", icon: CheckCircle },
-    completed: { label: "✅ Hoàn thành", variant: "default", icon: CheckCircle },
+    completed: { label: "Hoàn thành", variant: "default", icon: CheckCircle },
     cancelled: { label: "Đã hủy", variant: "destructive", icon: null },
   }
   return statusMap[status] || { label: status, variant: "secondary", icon: Clock }
@@ -147,14 +148,9 @@ export default function OrdersPage() {
       <div className="max-w-4xl mx-auto px-4">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-foreground">Đơn hàng của tôi</h1>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={loadOrders}>
-              🔄 Tải lại
-            </Button>
-            <Link href="/">
-              <Button variant="outline">Tiếp tục mua hàng</Button>
-            </Link>
-          </div>
+          <Link href="/">
+            <Button variant="outline">Tiếp tục mua hàng</Button>
+          </Link>
         </div>
 
         {orders.length === 0 ? (

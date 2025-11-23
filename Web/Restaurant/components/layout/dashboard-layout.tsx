@@ -9,7 +9,6 @@ import {
   Home,
   UtensilsCrossed,
   PackageOpen,
-  Bone as Drone,
   BarChart3,
   Users,
   TrendingUp,
@@ -20,10 +19,9 @@ import {
 import { AccountPage } from "@/components/pages/account-page"
 import { MenuPage } from "@/components/pages/menu-page"
 import { OrderPage } from "@/components/pages/order-page"
-import { DroneNotificationPage } from "@/components/pages/drone-notification-page"
 import { AnalyticsPage } from "@/components/pages/analytics-page"
 
-type PageType = "dashboard" | "account" | "menu" | "orders" | "drone" | "analytics"
+type PageType = "dashboard" | "account" | "menu" | "orders" | "analytics"
 
 interface DashboardLayoutProps {
   restaurantName: string
@@ -36,7 +34,6 @@ interface DashboardStats {
   activeMenuItems: number
   monthlyRevenue: string
   avgRating: number
-  busyDrones: number
 }
 
 export function DashboardLayout({ restaurantName, onLogout }: DashboardLayoutProps) {
@@ -49,7 +46,6 @@ export function DashboardLayout({ restaurantName, onLogout }: DashboardLayoutPro
     activeMenuItems: 42,
     monthlyRevenue: "28,500,000 VND",
     avgRating: 4.8,
-    busyDrones: 2,
   }
 
   const menuItems = [
@@ -57,8 +53,7 @@ export function DashboardLayout({ restaurantName, onLogout }: DashboardLayoutPro
     { id: "account", label: "Tài Khoản & Nhân Viên", icon: Users },
     { id: "menu", label: "Quản Lý Thực Đơn", icon: UtensilsCrossed },
     { id: "orders", label: "Quản Lý Đơn Hàng", icon: PackageOpen },
-    { id: "drone", label: "Thông Báo Drone", icon: Drone },
-    { id: "analytics", label: "Thống Kê & Báo Cáo", icon: BarChart3 },
+    { id: "analytics", label: "Thống Kê", icon: BarChart3 },
   ] as const
 
   const featureOverview = [
@@ -94,14 +89,6 @@ export function DashboardLayout({ restaurantName, onLogout }: DashboardLayoutPro
       subtitle: "Từ khách hàng",
       page: "analytics" as PageType,
     },
-    {
-      title: "Drone Đang Hoạt Động",
-      value: dashboardStats.busyDrones,
-      icon: Drone,
-      color: "from-indigo-500 to-blue-500",
-      subtitle: "Đang giao hàng",
-      page: "drone" as PageType,
-    },
   ]
 
   const renderPage = () => {
@@ -112,8 +99,6 @@ export function DashboardLayout({ restaurantName, onLogout }: DashboardLayoutPro
         return <MenuPage />
       case "orders":
         return <OrderPage />
-      case "drone":
-        return <DroneNotificationPage />
       case "analytics":
         return <AnalyticsPage />
       default:

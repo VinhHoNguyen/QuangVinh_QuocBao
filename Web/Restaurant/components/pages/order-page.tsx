@@ -72,26 +72,23 @@ export function OrderPage() {
     }
   }
 
-  const getStatistics = () => {
+  const getOrderCounts = () => {
     if (!orders || !Array.isArray(orders)) {
-      return {
-        "CHỜ XỬ LÝ": 0,
-        "ĐANG CHUẨN BỊ": 0,
-        "SẴN SÀNG": 0,
-      }
+      return { pending: 0, preparing: 0, ready: 0, completed: 0 }
     }
     return {
-      "CHỜ XỬ LÝ": orders.filter((o) => o.status === "pending").length,
-      "ĐANG CHUẨN BỊ": orders.filter((o) => o.status === "preparing").length,
-      "SẴN SÀNG": orders.filter((o) => o.status === "ready").length,
+      pending: orders.filter((o) => o.status === "pending").length,
+      preparing: orders.filter((o) => o.status === "preparing").length,
+      ready: orders.filter((o) => o.status === "ready").length,
+      completed: orders.filter((o) => o.status === "completed").length,
     }
   }
 
   const handleAcceptOrder = async (orderId: string) => {
     try {
-      await orderAPI.updateStatus(orderId, 'confirmed')
-      setOrders(orders.map((order) => (order._id === orderId ? { ...order, status: 'confirmed' } : order)))
-      toast.success('Đã chấp nhận đơn hàng')
+      await orderAPI.updateStatus(orderId, 'preparing')
+      toast.success('Đã chấp nhận đơn hàng - Bắt đầu chuẩn bị')
+      fetchOrders()
     } catch (error) {
       console.error('Error accepting order:', error)
       toast.error('Không thể chấp nhận đơn hàng')
@@ -101,10 +98,10 @@ export function OrderPage() {
   const handleRejectOrder = async (orderId: string) => {
     try {
       await orderAPI.updateStatus(orderId, 'cancelled')
-      setOrders(orders.map((order) => (order._id === orderId ? { ...order, status: 'cancelled' } : order)))
       setShowRejectReason(false)
       setRejectReason("")
       toast.success('Đã từ chối đơn hàng')
+      fetchOrders()
     } catch (error) {
       console.error('Error rejecting order:', error)
       toast.error('Không thể từ chối đơn hàng')
@@ -121,8 +118,8 @@ export function OrderPage() {
 
     try {
       await orderAPI.updateStatus(orderId, nextStatus as any)
-      setOrders(orders.map((o) => (o._id === orderId ? { ...o, status: nextStatus } : o)))
       toast.success('Đã cập nhật trạng thái')
+      fetchOrders()
     } catch (error) {
       console.error('Error updating status:', error)
       toast.error('Không thể cập nhật trạng thái')
@@ -131,9 +128,9 @@ export function OrderPage() {
 
   const handleShipperPickup = async (orderId: string) => {
     try {
-      await orderAPI.updateStatus(orderId, 'delivering')
-      setOrders(orders.map((o) => (o._id === orderId ? { ...o, status: 'delivering' } : o)))
-      toast.success('🚚 Shipper đã nhận hàng - Đang giao')
+      await orderAPI.updateStatus(orderId, 'completed')
+      toast.success('Shipper đã nhận hàng - Đơn hàng hoàn thành')
+      fetchOrders() // Reload data to show updated status
     } catch (error) {
       console.error('Error updating status:', error)
       toast.error('Không thể cập nhật trạng thái')
@@ -148,30 +145,10 @@ export function OrderPage() {
     )
   }
 
-  const stats = getStatistics()
+  const counts = getOrderCounts()
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end mb-4">
-        <Button variant="outline" onClick={fetchOrders}>
-          🔄 Tải lại đơn hàng
-        </Button>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[
-          { label: "Chờ Xử Lý", key: "CHỜ XỬ LÝ", color: "bg-yellow-100" },
-          { label: "Đang Chuẩn Bị", key: "ĐANG CHUẨN BỊ", color: "bg-purple-100" },
-          { label: "Sẵn Sàng Giao", key: "SẴN SÀNG", color: "bg-green-100" },
-        ].map((stat) => (
-          <Card key={stat.label} className={`${stat.color} border-border`}>
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
-              <p className="text-3xl font-bold text-primary mt-2">{stats[stat.key as keyof typeof stats]}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
 
       <Tabs defaultValue="pending" className="w-full">
         <TabsList className="grid w-full grid-cols-4 bg-muted">
@@ -179,25 +156,25 @@ export function OrderPage() {
             value="pending"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
-            Chờ Xử Lý
+            Chờ Xử Lý ({counts.pending})
           </TabsTrigger>
           <TabsTrigger
             value="preparing"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
-            Đang Chuẩn Bị
+            Đang Chuẩn Bị ({counts.preparing})
           </TabsTrigger>
           <TabsTrigger
             value="ready"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
-            Sẵn Sàng Giao
+            Sẵn Sàng Giao ({counts.ready})
           </TabsTrigger>
           <TabsTrigger
             value="completed"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
-            Đã Hoàn Thành
+            Đã Hoàn Thành ({counts.completed})
           </TabsTrigger>
         </TabsList>
 
@@ -293,7 +270,7 @@ export function OrderPage() {
         <TabsContent value="ready" className="space-y-4">
           {orders && orders.length > 0 ? (
             orders
-            .filter((order) => ['ready', 'delivering'].includes(order.status))
+            .filter((order) => order.status === 'ready')
             .map((order) => (
               <Card key={order._id} className="border-border hover:shadow-lg transition-shadow">
                 <CardContent className="pt-6">
@@ -315,18 +292,12 @@ export function OrderPage() {
                   <p className="text-lg font-bold text-primary mb-4">
                     Tổng: {order.totalPrice.toLocaleString("vi-VN")}đ
                   </p>
-                  {order.status === 'ready' ? (
-                    <Button 
-                      className="w-full bg-green-600 hover:bg-green-700 text-white" 
-                      onClick={() => handleShipperPickup(order._id)}
-                    >
-                      🚚 Shipper Đã Nhận Hàng
-                    </Button>
-                  ) : (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center text-sm text-blue-700">
-                      🚚 Đang giao hàng
-                    </div>
-                  )}
+                  <Button 
+                    className="w-full bg-green-600 hover:bg-green-700 text-white" 
+                    onClick={() => handleShipperPickup(order._id)}
+                  >
+                    🚚 Shipper Đã Nhận Hàng
+                  </Button>
                 </CardContent>
               </Card>
             ))

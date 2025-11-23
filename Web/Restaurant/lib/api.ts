@@ -116,6 +116,7 @@ export interface Restaurant {
   name: string;
   phone: string;
   address: string;
+  email?: string;
   image: string;
   minOrder: number;
   maxOrder: number;
@@ -123,9 +124,68 @@ export interface Restaurant {
   status: 'active' | 'inactive' | 'suspended';
   locationId: string;
   ownerId: string;
+  openingHours?: {
+    open: string;
+    close: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
+
+// Product types
+export interface Product {
+  _id: string;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  image: string;
+  restaurantId: string;
+  available: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateProductData {
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  image?: string;
+  available?: boolean;
+}
+
+// Product API
+export const productAPI = {
+  // Get all products for a restaurant
+  getByRestaurant: async (restaurantId: string): Promise<Product[]> => {
+    const response = await api.get<{ success: boolean; data: Product[] }>(`/products/restaurant/${restaurantId}`);
+    return response.data.data || [];
+  },
+
+  // Create new product
+  create: async (data: CreateProductData): Promise<Product> => {
+    const response = await api.post<{ success: boolean; data: Product }>('/products', data);
+    return response.data.data;
+  },
+
+  // Update product
+  update: async (productId: string, data: Partial<CreateProductData>): Promise<Product> => {
+    const response = await api.put<{ success: boolean; data: Product }>(`/products/${productId}`, data);
+    return response.data.data;
+  },
+
+  // Delete product
+  delete: async (productId: string): Promise<void> => {
+    await api.delete(`/products/${productId}`);
+  },
+
+  // Toggle product availability
+  toggleAvailability: async (productId: string): Promise<Product> => {
+    const response = await api.patch<{ success: boolean; data: Product }>(`/products/${productId}/availability`);
+    return response.data.data;
+  },
+};
 
 // Restaurant API
 export const restaurantAPI = {

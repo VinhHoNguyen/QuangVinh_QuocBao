@@ -1,26 +1,24 @@
 "use client"
 
-import { useState } from "react"
 import { LoginPage } from "@/components/auth/login-page"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
+import { useAuth } from "@/lib/auth-context"
+import { Loader2 } from "lucide-react"
 
 export default function Home() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [restaurantName, setRestaurantName] = useState("")
+  const { user, loading, logout } = useAuth()
 
-  const handleLogin = (name: string) => {
-    setRestaurantName(name)
-    setIsLoggedIn(true)
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
-  const handleLogout = () => {
-    setIsLoggedIn(false)
-    setRestaurantName("")
+  if (!user) {
+    return <LoginPage />
   }
 
-  if (!isLoggedIn) {
-    return <LoginPage onLogin={handleLogin} />
-  }
-
-  return <DashboardLayout restaurantName={restaurantName} onLogout={handleLogout} />
+  return <DashboardLayout restaurantName={user.name || "Nhà hàng"} onLogout={logout} />
 }

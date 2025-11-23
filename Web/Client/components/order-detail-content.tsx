@@ -35,45 +35,6 @@ export default function OrderDetailContent({ orderId }: { orderId: string }) {
   const [review, setReview] = useState("")
   const [prevStatus, setPrevStatus] = useState<string>("")
 
-  // Fetch order on mount
-  useEffect(() => {
-    fetchOrder()
-  }, [orderId])
-
-  // Auto-complete order when status is "delivering" (for demo)
-  useEffect(() => {
-    if (!order) return
-
-    console.log('[Order Auto-Complete] Current status:', order.status)
-
-    if (order.status === 'delivering') {
-      console.log('[Order Auto-Complete] Starting 4 second timer...')
-      const timer = setTimeout(() => {
-        console.log('[Order Auto-Complete] Timer fired, completing order...')
-        completeOrder()
-      }, 4000) // Auto complete after 4 seconds
-
-      return () => {
-        console.log('[Order Auto-Complete] Cleaning up timer')
-        clearTimeout(timer)
-      }
-    }
-  }, [order?._id, order?.status])
-
-  const completeOrder = async () => {
-    try {
-      const response = await orderAPI.updateStatus(orderId, 'completed')
-      if (response.success) {
-        toast.success('✅ Đơn hàng đã hoàn thành', {
-          description: 'Cảm ơn bạn đã sử dụng dịch vụ!'
-        })
-        fetchOrder() // Refresh order
-      }
-    } catch (error) {
-      console.error('Error completing order:', error)
-    }
-  }
-
   const fetchOrder = async () => {
     try {
       const response = await orderAPI.getById(orderId)
@@ -116,6 +77,46 @@ export default function OrderDetailContent({ orderId }: { orderId: string }) {
       setLoading(false)
     }
   }
+
+  const completeOrder = async () => {
+    try {
+      console.log('[Order Auto-Complete] Calling API to complete order...')
+      const response = await orderAPI.updateStatus(orderId, 'completed')
+      if (response.success) {
+        toast.success('✅ Đơn hàng đã hoàn thành', {
+          description: 'Cảm ơn bạn đã sử dụng dịch vụ!'
+        })
+        fetchOrder() // Refresh order
+      }
+    } catch (error) {
+      console.error('Error completing order:', error)
+    }
+  }
+
+  // Fetch order on mount
+  useEffect(() => {
+    fetchOrder()
+  }, [orderId])
+
+  // Auto-complete order when status is "delivering" (for demo)
+  useEffect(() => {
+    if (!order) return
+
+    console.log('[Order Auto-Complete] Current status:', order.status)
+
+    if (order.status === 'delivering') {
+      console.log('[Order Auto-Complete] Starting 4 second timer...')
+      const timer = setTimeout(() => {
+        console.log('[Order Auto-Complete] Timer fired, completing order...')
+        completeOrder()
+      }, 4000) // Auto complete after 4 seconds
+
+      return () => {
+        console.log('[Order Auto-Complete] Cleaning up timer')
+        clearTimeout(timer)
+      }
+    }
+  }, [order?._id, order?.status])
 
   if (loading) {
     return (

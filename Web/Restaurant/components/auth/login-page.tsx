@@ -9,17 +9,13 @@ import { Card } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 
-interface LoginPageProps {
-  onLogin: (restaurantName: string) => void
-}
-
 const DEMO_ACCOUNT = {
   restaurantName: "Phở Việt Nam",
   email: "restaurant1@example.com",
   password: "restaurant123",
 }
 
-export function LoginPage({ onLogin }: LoginPageProps) {
+export function LoginPage() {
   const { login } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -34,8 +30,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       try {
         await login(email, password)
         toast.success("Đăng nhập thành công!")
-        // Get restaurant name from response (could be enhanced)
-        onLogin("Restaurant") // This will be updated with actual restaurant name
+        // User will be automatically redirected by the auth context
       } catch (err: any) {
         const errorMessage = err.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin."
         setError(errorMessage)
