@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
+import { apiService } from '../services/api';
 
 interface User {
   id: string;
@@ -41,6 +42,11 @@ interface AppContextType {
   removeFromCart: (id: string) => void;
   clearCart: () => void;
   createOrder: (order: Omit<Order, 'id' | 'createdAt' | 'status'>) => void;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, name: string, phone: string) => Promise<void>;
+  logout: () => Promise<void>;
+  loadRestaurants: () => Promise<any[]>;
+  loadProductsByRestaurant: (restaurantId: string) => Promise<any[]>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -82,6 +88,66 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       await AsyncStorage.setItem('user', JSON.stringify(newUser));
     } else {
       await AsyncStorage.removeItem('user');
+    }
+  };
+
+  const login = async (email: string, password: string) => {
+    try {
+      const response = await apiService.login(email, password);
+      const userData: User = {
+        id: response.data._id || response.data.id,
+        name: response.data.name,
+        email: response.data.email,
+        phone: response.data.phone || '',
+        address: response.data.address || '',
+      };
+      await setUser(userData);
+    } catch (error: any) {
+      Alert.alert('Lỗi đăng nhập', error.response?.data?.message || 'Đăng nhập thất bại');
+      throw error;
+    }
+  };
+
+  const register = async (email: string, password: string, name: string, phone: string) => {
+    try {
+      const response = await apiService.register(email, password, name, phone);
+      const userData: User = {
+        id: response.data._id || response.data.id,
+        name: response.data.name,
+        email: response.data.email,
+        phone: response.data.phone,
+        address: '',
+      };
+      await setUser(userData);
+    } catch (error: any) {
+      Alert.alert('Lỗi đăng ký', error.response?.data?.message || 'Đăng ký thất bại');
+      throw error;
+    }
+  };
+
+  const logout = async () => {
+    await apiService.logout();
+    await setUser(null);
+    clearCart();
+  };
+
+  const loadRestaurants = async () => {
+    try {
+      const response = await apiService.getRestaurants();
+      return response.data || [];
+    } catch (error) {
+      console.error('Load restaurants error:', error);
+      return [];
+    }
+  };
+
+  const loadProductsByRestaurant = async (restaurantId: string) => {
+    try {
+      const response = await apiService.getProductsByRestaurant(restaurantId);
+      return response.data || [];
+    } catch (error) {
+      console.error('Load products error:', error);
+      return [];
     }
   };
 
@@ -172,12 +238,17 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         user,
         setUser,
         cart,
-        orders, // Record<string, Order[]>
+        orders,
         addToCart,
         updateCart,
         removeFromCart,
         clearCart,
         createOrder,
+        login,
+        register,
+        logout,
+        loadRestaurants,
+        loadProductsByRestaurant,
       }}
     >
       {children}

@@ -1,21 +1,19 @@
 import type { Response, NextFunction } from 'express';
-import { db } from '../config/firebase';
 import { AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import {
-  Order,
   OrderStatus,
   PaymentStatus,
   CreateOrderRequest,
-  OrderItem,
-  Product,
-  Delivery,
-  DeliveryStatus,
-  DroneStatus,
-  Location,
   LocationType,
 } from '../models/types';
-import { COLLECTIONS, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../models/constants';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../models/constants';
+import OrderModel from '../models/Order';
+import ProductModel from '../models/Product';
+import RestaurantModel from '../models/Restaurant';
+import DeliveryModel, { DeliveryStatus } from '../models/Delivery';
+import DroneModel, { DroneStatus } from '../models/Drone';
+import LocationModel from '../models/Location';
 
 // Create order
 export const createOrder = async (
@@ -36,30 +34,28 @@ export const createOrder = async (
     }: CreateOrderRequest = req.body;
 
     // Verify restaurant exists
-    const restaurantDoc = await db.collection(COLLECTIONS.RESTAURANTS).doc(restaurantId).get();
-    if (!restaurantDoc.exists) {
+    const restaurant = await RestaurantModel.findById(restaurantId);
+    if (!restaurant) {
       throw new AppError(ERROR_MESSAGES.RESTAURANT_NOT_FOUND, 404);
     }
 
     // Calculate order items and total
-    const orderItems: OrderItem[] = [];
+    const orderItems: any[] = [];
     let totalPrice = 0;
 
     for (const item of items) {
-      const productDoc = await db.collection(COLLECTIONS.PRODUCTS).doc(item.productId).get();
+      const product = await ProductModel.findById(item.productId);
 
-      if (!productDoc.exists) {
+      if (!product) {
         throw new AppError(`Product ${item.productId} not found`, 404);
       }
-
-      const product = productDoc.data() as Product;
 
       if (!product.available) {
         throw new AppError(`Product ${product.name} is not available`, 400);
       }
 
-      const orderItem: OrderItem = {
-        _id: item.productId,
+      const orderItem = {
+        productId: item.productId,
         productName: product.name,
         quantity: item.quantity,
         price: product.price,
@@ -70,7 +66,7 @@ export const createOrder = async (
     }
 
     // Create order
-    const newOrder: Omit<Order, '_id'> = {
+    const newOrder = await OrderModel.create({
       userId: req.user._id,
       restaurantId,
       items: orderItems,
@@ -79,58 +75,44 @@ export const createOrder = async (
       paymentMethod,
       paymentStatus: PaymentStatus.PENDING,
       shippingAddress,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    const orderRef = await db.collection(COLLECTIONS.ORDERS).add(newOrder);
+    });
 
     // Create delivery location
-    const deliveryLocation: Omit<Location, '_id'> = {
+    const deliveryLocation = await LocationModel.create({
       type: LocationType.CUSTOMER,
       coords: shippingAddress.coordinates,
       address: `${shippingAddress.street}, ${shippingAddress.ward}, ${shippingAddress.district}, ${shippingAddress.city}`,
-    };
+    });
 
-    const locationRef = await db.collection(COLLECTIONS.LOCATIONS).add(deliveryLocation);
+    // Get restaurant location
+    const restaurantLocation = await LocationModel.findOne({ 
+      type: LocationType.RESTAURANT,
+      address: restaurant.address 
+    });
 
     // Find available drone
-    const availableDroneSnapshot = await db
-      .collection(COLLECTIONS.DRONES)
-      .where('status', '==', DroneStatus.AVAILABLE)
-      .limit(1)
-      .get();
+    const availableDrone = await DroneModel.findOne({ status: DroneStatus.AVAILABLE });
 
-    if (!availableDroneSnapshot.empty) {
-      const droneDoc = availableDroneSnapshot.docs[0];
-
+    if (availableDrone && restaurantLocation) {
       // Create delivery
-      const newDelivery: Omit<Delivery, '_id'> = {
-        orderId: orderRef.id,
-        droneId: droneDoc.id,
-        dropoffLocationId: locationRef.id,
+      await DeliveryModel.create({
+        orderId: newOrder._id,
+        droneId: availableDrone._id,
+        pickupLocationId: restaurantLocation._id,
+        dropoffLocationId: deliveryLocation._id,
         status: DeliveryStatus.ASSIGNED,
         estimatedTime: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      await db.collection(COLLECTIONS.DELIVERIES).add(newDelivery);
-
-      // Update drone status
-      await db.collection(COLLECTIONS.DRONES).doc(droneDoc.id).update({
-        status: DroneStatus.BUSY,
-        updatedAt: new Date(),
       });
+
+      // Update drone status to in_transit
+      availableDrone.status = DroneStatus.IN_TRANSIT;
+      await availableDrone.save();
     }
 
     res.status(201).json({
       success: true,
       message: SUCCESS_MESSAGES.CREATED,
-      data: {
-        _id: orderRef.id,
-        ...newOrder,
-      },
+      data: newOrder,
     });
   } catch (error) {
     next(error);
@@ -146,26 +128,21 @@ export const getAllOrders = async (
   try {
     const { status, userId, restaurantId } = req.query;
 
-    let query = db.collection(COLLECTIONS.ORDERS);
+    const filter: any = {};
 
     if (status) {
-      query = query.where('status', '==', status) as any;
+      filter.status = status;
     }
 
     if (userId) {
-      query = query.where('userId', '==', userId) as any;
+      filter.userId = userId;
     }
 
     if (restaurantId) {
-      query = query.where('restaurantId', '==', restaurantId) as any;
+      filter.restaurantId = restaurantId;
     }
 
-    const ordersSnapshot = await query.orderBy('createdAt', 'desc').get();
-
-    const orders = ordersSnapshot.docs.map((doc) => ({
-      _id: doc.id,
-      ...doc.data(),
-    }));
+    const orders = await OrderModel.find(filter).sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -185,18 +162,15 @@ export const getOrderById = async (
   try {
     const { id } = req.params;
 
-    const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(id).get();
+    const order = await OrderModel.findById(id);
 
-    if (!orderDoc.exists) {
+    if (!order) {
       throw new AppError(ERROR_MESSAGES.ORDER_NOT_FOUND, 404);
     }
 
     res.status(200).json({
       success: true,
-      data: {
-        _id: orderDoc.id,
-        ...orderDoc.data(),
-      },
+      data: order,
     });
   } catch (error) {
     next(error);
@@ -214,16 +188,7 @@ export const getUserOrders = async (
       throw new AppError(ERROR_MESSAGES.UNAUTHORIZED, 401);
     }
 
-    const ordersSnapshot = await db
-      .collection(COLLECTIONS.ORDERS)
-      .where('userId', '==', req.user._id)
-      .orderBy('createdAt', 'desc')
-      .get();
-
-    const orders = ordersSnapshot.docs.map((doc: any) => ({
-      _id: doc.id,
-      ...doc.data(),
-    }));
+    const orders = await OrderModel.find({ userId: req.user._id }).sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -248,16 +213,14 @@ export const updateOrderStatus = async (
     const { id } = req.params;
     const { status } = req.body;
 
-    const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(id).get();
+    const order = await OrderModel.findById(id);
 
-    if (!orderDoc.exists) {
+    if (!order) {
       throw new AppError(ERROR_MESSAGES.ORDER_NOT_FOUND, 404);
     }
 
-    await db.collection(COLLECTIONS.ORDERS).doc(id).update({
-      status,
-      updatedAt: new Date(),
-    });
+    order.status = status;
+    await order.save();
 
     res.status(200).json({
       success: true,
@@ -280,28 +243,49 @@ export const cancelOrder = async (
     }
 
     const { id } = req.params;
+    const { reason } = req.body;
 
-    const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(id).get();
+    const order = await OrderModel.findById(id);
 
-    if (!orderDoc.exists) {
+    if (!order) {
       throw new AppError(ERROR_MESSAGES.ORDER_NOT_FOUND, 404);
     }
 
-    const order = orderDoc.data() as Order;
-
-    // Only allow cancellation if order is still pending
+    // Only allow cancellation if order is still pending or confirmed
     if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.CONFIRMED) {
       throw new AppError('Cannot cancel order at this stage', 400);
     }
 
-    await db.collection(COLLECTIONS.ORDERS).doc(id).update({
-      status: OrderStatus.CANCELLED,
-      updatedAt: new Date(),
-    });
+    order.status = OrderStatus.CANCELLED;
+    if (reason) {
+      order.notes = `Cancelled: ${reason}. ${order.notes || ''}`;
+    }
+    await order.save();
 
     res.status(200).json({
       success: true,
       message: 'Order cancelled successfully',
+      data: order,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get restaurant orders
+export const getRestaurantOrders = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params; // restaurantId
+
+    const orders = await OrderModel.find({ restaurantId: id }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: orders,
     });
   } catch (error) {
     next(error);

@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useMemo, use } from "react"
-import { ArrowLeft, Star, Search, ChevronRight, ShoppingCart } from "lucide-react"
+import { ArrowLeft, Star, Search, ChevronRight, ShoppingCart, UserIcon, LogOut, ShoppingBag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useOrder } from "@/lib/order-context"
 import { useAuth } from "@/lib/auth-context"
+import { useCart } from "@/lib/cart-context"
 import { AuthModal } from "@/components/auth-modal"
 import { useRestaurant, useRestaurantProducts } from "@/lib/hooks"
 import type { Dish } from "@/lib/restaurant-data"
@@ -27,8 +28,9 @@ function RestaurantContent({ restaurantId }: { restaurantId: string }) {
   const [authOpen, setAuthOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(6)
 
-  const { addToCart, cart } = useOrder()
-  const { user } = useAuth()
+  const { cart: orderCart } = useOrder() // Keep for backward compatibility
+  const { user, logout } = useAuth()
+  const { cart, addToCart: addToCartAPI, totalItems } = useCart()
 
   // Fetch real data from backend
   const { restaurant, loading: restaurantLoading } = useRestaurant(restaurantId)
@@ -64,18 +66,19 @@ function RestaurantContent({ restaurantId }: { restaurantId: string }) {
 
   const visibleDishes = filteredAndSorted.slice(0, visibleCount)
 
-  const handleAddToCart = (dish: Dish) => {
+  const handleAddToCart = async (dish: Dish) => {
     if (!user) {
       setAuthOpen(true)
       return
     }
-    addToCart({
-      id: dish.id,
-      name: dish.name,
-      price: dish.price,
-      image: dish.image,
-      restaurantId: dish.restaurantId,
-    })
+    
+    try {
+      await addToCartAPI(dish.id, 1)
+      // Optional: Show success notification
+    } catch (error) {
+      console.error('Error adding to cart:', error)
+      // Optional: Show error notification
+    }
   }
 
   if (restaurantLoading || dishesLoading) {
@@ -112,16 +115,43 @@ function RestaurantContent({ restaurantId }: { restaurantId: string }) {
             <span className="font-semibold text-foreground">Quay lại</span>
           </Link>
           <h1 className="text-xl font-bold text-primary hidden md:block">{restaurant.name}</h1>
-          <Link href="/checkout">
-            <Button variant="ghost" size="icon" className="relative">
-              <ShoppingCart className="w-5 h-5" />
-              {cart.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-accent text-accent-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                  {cart.length}
-                </span>
-              )}
-            </Button>
-          </Link>
+          
+          <div className="flex items-center gap-3">
+            {user ? (
+              <div className="flex items-center gap-2">
+                <Link href="/profile">
+                  <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10">
+                    <UserIcon className="w-4 h-4 mr-2" />
+                    <span className="hidden sm:inline">{user.name}</span>
+                  </Button>
+                </Link>
+                <Button variant="ghost" size="icon" onClick={logout} title="Đăng xuất">
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setAuthOpen(true)}>
+                Đăng nhập
+              </Button>
+            )}
+
+            <Link href="/orders">
+              <Button variant="ghost" size="icon" title="Đơn hàng của tôi">
+                <ShoppingBag className="w-5 h-5" />
+              </Button>
+            </Link>
+
+            <Link href="/cart">
+              <Button variant="ghost" size="icon" className="relative">
+                <ShoppingCart className="w-5 h-5" />
+                {totalItems > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-accent text-accent-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                    {totalItems}
+                  </span>
+                )}
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 

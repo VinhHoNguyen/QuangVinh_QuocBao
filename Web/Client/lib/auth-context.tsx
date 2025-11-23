@@ -26,6 +26,7 @@ export interface Address {
 
 interface AuthContextType {
   user: User | null
+  token: string | null
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
   signup: (name: string, email: string, phone: string, password: string) => Promise<void>
@@ -39,16 +40,27 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     // Check localStorage for saved user on mount
     const savedUser = localStorage.getItem("foodfast_user")
-    if (savedUser) {
+    const savedToken = localStorage.getItem("foodfast_token")
+    
+    console.log('Auth init - savedUser:', savedUser ? 'exists' : 'null');
+    console.log('Auth init - savedToken:', savedToken ? 'exists' : 'null');
+    
+    if (savedUser && savedToken) {
       try {
         setUser(JSON.parse(savedUser))
+        setToken(savedToken)
+        console.log('Auth init - User and token restored from localStorage');
       } catch (error) {
         console.error("Failed to parse user:", error)
+        // Clear corrupted data
+        localStorage.removeItem("foodfast_user")
+        localStorage.removeItem("foodfast_token")
       }
     }
     setIsLoading(false)
@@ -59,23 +71,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await authAPI.login(email, password)
       
+      console.log('Login response:', response);
+      
       if (response.success && response.data) {
-        // Note: In a real Firebase setup, you'd get a token from signInWithEmailAndPassword
-        // For now, we'll create a mock token. You should implement proper Firebase Auth
-        const mockToken = `mock_token_${response.data.uid}`
-        saveAuthToken(mockToken)
+        // Token is inside response.data, not response.token
+        const authToken = response.data.token
+        
+        console.log('Login - authToken:', authToken ? 'exists' : 'null');
+        
+        saveAuthToken(authToken)
+        localStorage.setItem("foodfast_token", authToken)
 
         const user: User = {
-          id: response.data.uid,
+          id: response.data._id || response.data.uid,
           name: response.data.name,
           email: response.data.email,
-          phone: "098 765 4321", // Would come from backend
+          phone: response.data.phone || "098 765 4321",
           role: response.data.role,
           addresses: [
             {
               id: "addr_1",
               name: "Nhà riêng",
-              phone: "098 765 4321",
+              phone: response.data.phone || "098 765 4321",
               address: "123 Nguyễn Huệ",
               district: "Quận 1",
               city: "Hồ Chí Minh",
@@ -85,6 +102,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setUser(user)
+        setToken(authToken)
+        
+        console.log('Login - User and token set successfully');
         localStorage.setItem("foodfast_user", JSON.stringify(user))
       }
     } catch (error) {
@@ -100,13 +120,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await authAPI.register(name, email, password, phone)
       
+      console.log('Signup response:', response);
+      
       if (response.success && response.data) {
-        // Auto login after successful registration
-        const mockToken = `mock_token_${response.data.uid}`
-        saveAuthToken(mockToken)
+        // Token is inside response.data, not response.token
+        const authToken = response.data.token
+        
+        console.log('Signup - authToken:', authToken ? 'exists' : 'null');
+        
+        saveAuthToken(authToken)
+        localStorage.setItem("foodfast_token", authToken)
 
         const user: User = {
-          id: response.data.uid,
+          id: response.data._id || response.data.uid,
           name: response.data.name,
           email: response.data.email,
           phone,
@@ -115,7 +141,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setUser(user)
+        setToken(authToken)
         localStorage.setItem("foodfast_user", JSON.stringify(user))
+        
+        console.log('Signup - User and token set successfully');
       }
     } catch (error) {
       console.error("Signup error:", error)
@@ -127,7 +156,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setUser(null)
+    setToken(null)
     localStorage.removeItem("foodfast_user")
+    localStorage.removeItem("foodfast_token")
     removeAuthToken()
   }
 
@@ -175,7 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, logout, updateProfile, addAddress, removeAddress }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, signup, logout, updateProfile, addAddress, removeAddress }}>
       {children}
     </AuthContext.Provider>
   )

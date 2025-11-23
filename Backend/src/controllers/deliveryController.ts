@@ -1,9 +1,10 @@
 import type { Response, NextFunction } from 'express';
-import { db } from '../config/firebase';
 import { AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
-import { Delivery } from '../models/types';
-import { COLLECTIONS, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../models/constants';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../models/constants';
+import DeliveryModel from '../models/Delivery';
+import DroneModel from '../models/Drone';
+import LocationModel from '../models/Location';
 
 // Get all deliveries
 export const getAllDeliveries = async (
@@ -14,26 +15,21 @@ export const getAllDeliveries = async (
   try {
     const { status, droneId, orderId } = req.query;
 
-    let query = db.collection(COLLECTIONS.DELIVERIES);
+    const filter: any = {};
 
     if (status) {
-      query = query.where('status', '==', status) as any;
+      filter.status = status;
     }
 
     if (droneId) {
-      query = query.where('droneId', '==', droneId) as any;
+      filter.droneId = droneId;
     }
 
     if (orderId) {
-      query = query.where('orderId', '==', orderId) as any;
+      filter.orderId = orderId;
     }
 
-    const deliveriesSnapshot = await query.orderBy('createdAt', 'desc').get();
-
-    const deliveries = deliveriesSnapshot.docs.map((doc) => ({
-      _id: doc.id,
-      ...doc.data(),
-    }));
+    const deliveries = await DeliveryModel.find(filter).sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -53,18 +49,15 @@ export const getDeliveryById = async (
   try {
     const { id } = req.params;
 
-    const deliveryDoc = await db.collection(COLLECTIONS.DELIVERIES).doc(id).get();
+    const delivery = await DeliveryModel.findById(id);
 
-    if (!deliveryDoc.exists) {
+    if (!delivery) {
       throw new AppError('Delivery not found', 404);
     }
 
     res.status(200).json({
       success: true,
-      data: {
-        _id: deliveryDoc.id,
-        ...deliveryDoc.data(),
-      },
+      data: delivery,
     });
   } catch (error) {
     next(error);
@@ -80,36 +73,24 @@ export const trackDelivery = async (
   try {
     const { orderId } = req.params;
 
-    const deliverySnapshot = await db
-      .collection(COLLECTIONS.DELIVERIES)
-      .where('orderId', '==', orderId)
-      .get();
+    const delivery = await DeliveryModel.findOne({ orderId });
 
-    if (deliverySnapshot.empty) {
+    if (!delivery) {
       throw new AppError('Delivery not found for this order', 404);
     }
 
-    const deliveryDoc = deliverySnapshot.docs[0];
-    const delivery = deliveryDoc.data() as Delivery;
-
     // Get drone info
-    const droneDoc = await db.collection(COLLECTIONS.DRONES).doc(delivery.droneId).get();
+    const drone = await DroneModel.findById(delivery.droneId);
 
     // Get location info
-    const locationDoc = await db
-      .collection(COLLECTIONS.LOCATIONS)
-      .doc(delivery.dropoffLocationId)
-      .get();
+    const location = await LocationModel.findById(delivery.dropoffLocationId);
 
     res.status(200).json({
       success: true,
       data: {
-        ...delivery,
-        _id: deliveryDoc.id,
-        drone: droneDoc.exists ? { _id: droneDoc.id, ...droneDoc.data() } : null,
-        dropoffLocation: locationDoc.exists
-          ? { _id: locationDoc.id, ...locationDoc.data() }
-          : null,
+        ...delivery.toObject(),
+        drone: drone ? drone.toObject() : null,
+        dropoffLocation: location ? location.toObject() : null,
       },
     });
   } catch (error) {
@@ -131,23 +112,20 @@ export const updateDeliveryStatus = async (
     const { id } = req.params;
     const { status } = req.body;
 
-    const deliveryDoc = await db.collection(COLLECTIONS.DELIVERIES).doc(id).get();
+    const delivery = await DeliveryModel.findById(id);
 
-    if (!deliveryDoc.exists) {
+    if (!delivery) {
       throw new AppError('Delivery not found', 404);
     }
 
-    const updates: any = {
-      status,
-      updatedAt: new Date(),
-    };
+    delivery.status = status;
 
     // If delivered, set actual time
     if (status === 'delivered') {
-      updates.actualTime = new Date();
+      delivery.actualTime = new Date();
     }
 
-    await db.collection(COLLECTIONS.DELIVERIES).doc(id).update(updates);
+    await delivery.save();
 
     res.status(200).json({
       success: true,

@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import bcrypt from 'bcrypt';
+const bcrypt = require('bcrypt');
 import User from '../models/User';
 import Restaurant from '../models/Restaurant';
 import Product from '../models/Product';
@@ -210,34 +210,34 @@ const seedAll = async () => {
     // ==================== 4. PRODUCTS ====================
     const productsData = [
       // Phở Hà Nội
-      { name: 'Phở Bò Tái', description: 'Phở bò tái truyền thống', price: 45000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=400', restaurantId: restaurants[0]._id, isAvailable: true },
-      { name: 'Phở Gà', description: 'Phở gà thanh đạm', price: 40000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1591814468924-caf88d1232e1?w=400', restaurantId: restaurants[0]._id, isAvailable: true },
-      { name: 'Bún Chả Hà Nội', description: 'Bún chả nướng thơm ngon', price: 50000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1559847844-5315695dadae?w=400', restaurantId: restaurants[0]._id, isAvailable: true },
+      { name: 'Phở Bò Tái', description: 'Phở bò tái truyền thống', price: 45000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=400', restaurantId: restaurants[0]._id, available: true },
+      { name: 'Phở Gà', description: 'Phở gà thanh đạm', price: 40000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1591814468924-caf88d1232e1?w=400', restaurantId: restaurants[0]._id, available: true },
+      { name: 'Bún Chả Hà Nội', description: 'Bún chả nướng thơm ngon', price: 50000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1559847844-5315695dadae?w=400', restaurantId: restaurants[0]._id, available: true },
       
       // Cơm Tấm Sài Gòn
-      { name: 'Cơm Tấm Sườn Bì', description: 'Cơm tấm sườn nướng', price: 35000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1626804475297-41608ea09aeb?w=400', restaurantId: restaurants[1]._id, isAvailable: true },
-      { name: 'Cơm Tấm Gà Nướng', description: 'Cơm tấm gà nướng sả', price: 38000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400', restaurantId: restaurants[1]._id, isAvailable: true },
-      { name: 'Cơm Tấm Đặc Biệt', description: 'Cơm tấm full topping', price: 55000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400', restaurantId: restaurants[1]._id, isAvailable: true },
+      { name: 'Cơm Tấm Sườn Bì', description: 'Cơm tấm sườn nướng', price: 35000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1626804475297-41608ea09aeb?w=400', restaurantId: restaurants[1]._id, available: true },
+      { name: 'Cơm Tấm Gà Nướng', description: 'Cơm tấm gà nướng sả', price: 38000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400', restaurantId: restaurants[1]._id, available: true },
+      { name: 'Cơm Tấm Đặc Biệt', description: 'Cơm tấm full topping', price: 55000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400', restaurantId: restaurants[1]._id, available: true },
       
       // Bánh Mì 362
-      { name: 'Bánh Mì Thịt Nguội', description: 'Bánh mì thịt nguội truyền thống', price: 20000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1603569283847-aa295f0d016a?w=400', restaurantId: restaurants[2]._id, isAvailable: true },
-      { name: 'Bánh Mì Pate', description: 'Bánh mì pate đặc biệt', price: 18000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1598182198871-d3f4ab4fd181?w=400', restaurantId: restaurants[2]._id, isAvailable: true },
-      { name: 'Bánh Mì Xíu Mại', description: 'Bánh mì xíu mại sốt cà', price: 25000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1619096252214-ef06c45683e3?w=400', restaurantId: restaurants[2]._id, isAvailable: true },
+      { name: 'Bánh Mì Thịt Nguội', description: 'Bánh mì thịt nguội truyền thống', price: 20000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1603569283847-aa295f0d016a?w=400', restaurantId: restaurants[2]._id, available: true },
+      { name: 'Bánh Mì Pate', description: 'Bánh mì pate đặc biệt', price: 18000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1598182198871-d3f4ab4fd181?w=400', restaurantId: restaurants[2]._id, available: true },
+      { name: 'Bánh Mì Xíu Mại', description: 'Bánh mì xíu mại sốt cà', price: 25000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1619096252214-ef06c45683e3?w=400', restaurantId: restaurants[2]._id, available: true },
       
       // Lẩu Thái
-      { name: 'Lẩu Thái Hải Sản', description: 'Lẩu Thái hải sản tươi ngon', price: 250000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?w=400', restaurantId: restaurants[3]._id, isAvailable: true },
-      { name: 'Lẩu Tomyum Gà', description: 'Lẩu tomyum cay chua', price: 180000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1606491956391-1c1b00f1543e?w=400', restaurantId: restaurants[3]._id, isAvailable: true },
-      { name: 'Lẩu Thái Nấm', description: 'Lẩu Thái chay nấm', price: 150000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400', restaurantId: restaurants[3]._id, isAvailable: true },
+      { name: 'Lẩu Thái Hải Sản', description: 'Lẩu Thái hải sản tươi ngon', price: 250000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?w=400', restaurantId: restaurants[3]._id, available: true },
+      { name: 'Lẩu Tomyum Gà', description: 'Lẩu tomyum cay chua', price: 180000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1606491956391-1c1b00f1543e?w=400', restaurantId: restaurants[3]._id, available: true },
+      { name: 'Lẩu Thái Nấm', description: 'Lẩu Thái chay nấm', price: 150000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400', restaurantId: restaurants[3]._id, available: true },
       
       // Gà Rán KFC
-      { name: 'Gà Rán Giòn', description: 'Combo 3 miếng gà rán', price: 85000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=400', restaurantId: restaurants[4]._id, isAvailable: true },
-      { name: 'Burger Gà', description: 'Burger gà giòn béo ngậy', price: 55000, category: 'Món Phụ', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400', restaurantId: restaurants[4]._id, isAvailable: true },
-      { name: 'Khoai Tây Chiên', description: 'Khoai tây chiên giòn', price: 25000, category: 'Món Phụ', image: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=400', restaurantId: restaurants[4]._id, isAvailable: true },
+      { name: 'Gà Rán Giòn', description: 'Combo 3 miếng gà rán', price: 85000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=400', restaurantId: restaurants[4]._id, available: true },
+      { name: 'Burger Gà', description: 'Burger gà giòn béo ngậy', price: 55000, category: 'Món Phụ', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400', restaurantId: restaurants[4]._id, available: true },
+      { name: 'Khoai Tây Chiên', description: 'Khoai tây chiên giòn', price: 25000, category: 'Món Phụ', image: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=400', restaurantId: restaurants[4]._id, available: true },
       
       // Sushi Tokyo
-      { name: 'Sushi Cá Hồi', description: 'Set 8 miếng sushi cá hồi', price: 120000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=400', restaurantId: restaurants[5]._id, isAvailable: true },
-      { name: 'Sashimi Tổng Hợp', description: 'Sashimi các loại cá', price: 200000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1617196034796-73dfa7b1fd56?w=400', restaurantId: restaurants[5]._id, isAvailable: true },
-      { name: 'Maki Cuộn Tempura', description: 'Maki cuộn tôm tempura', price: 95000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1611143669185-af224c5e3252?w=400', restaurantId: restaurants[5]._id, isAvailable: true },
+      { name: 'Sushi Cá Hồi', description: 'Set 8 miếng sushi cá hồi', price: 120000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=400', restaurantId: restaurants[5]._id, available: true },
+      { name: 'Sashimi Tổng Hợp', description: 'Sashimi các loại cá', price: 200000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1617196034796-73dfa7b1fd56?w=400', restaurantId: restaurants[5]._id, available: true },
+      { name: 'Maki Cuộn Tempura', description: 'Maki cuộn tôm tempura', price: 95000, category: 'Món Chính', image: 'https://images.unsplash.com/photo-1611143669185-af224c5e3252?w=400', restaurantId: restaurants[5]._id, available: true },
     ];
 
     const products = await Product.insertMany(productsData);
@@ -312,6 +312,10 @@ const seedAll = async () => {
     }
 
     // ==================== 7. ORDERS ====================
+    if (!customer1) {
+      throw new Error('Không tìm thấy customer1');
+    }
+
     const ordersData = [
       {
         userId: customer1._id,

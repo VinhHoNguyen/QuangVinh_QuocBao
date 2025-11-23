@@ -59,6 +59,7 @@ export const register = async (
         email: newUser.email,
         name: newUser.name,
         role: newUser.role,
+        restaurantId: newUser.restaurantId,
         token,
       },
     });
@@ -106,6 +107,7 @@ export const login = async (
         email: user.email,
         name: user.name,
         role: user.role,
+        restaurantId: user.restaurantId,
         token,
       },
     });
@@ -140,6 +142,7 @@ export const getProfile = async (
         phone: user.phone,
         role: user.role,
         status: user.status,
+        restaurantId: user.restaurantId,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },

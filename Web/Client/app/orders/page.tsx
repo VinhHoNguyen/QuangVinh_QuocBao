@@ -1,44 +1,104 @@
 "use client"
 
-import { useState } from "react"
-import { useOrder } from "@/lib/order-context"
+import { useState, useEffect } from "react"
+import { useAuth } from "@/lib/auth-context"
+import { orderAPI, Order } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Package, Clock, CheckCircle, Star, ArrowRight } from "lucide-react"
+import { Package, Clock, CheckCircle, Star, ArrowRight, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 const getStatusBadge = (status: string) => {
   const statusMap: Record<string, { label: string; variant: any; icon: any }> = {
+    pending: { label: "Chờ xác nhận", variant: "secondary", icon: Clock },
+    confirmed: { label: "Đã xác nhận", variant: "secondary", icon: CheckCircle },
     preparing: { label: "Đang chuẩn bị", variant: "secondary", icon: Clock },
-    "on-the-way": { label: "Đang giao", variant: "default", icon: Package },
+    ready: { label: "Sẵn sàng", variant: "default", icon: Package },
+    delivering: { label: "Đang giao", variant: "default", icon: Package },
     delivered: { label: "Đã giao", variant: "default", icon: CheckCircle },
     cancelled: { label: "Đã hủy", variant: "destructive", icon: null },
   }
-  return statusMap[status]
+  return statusMap[status] || { label: status, variant: "secondary", icon: Clock }
 }
 
 export default function OrdersPage() {
-  const { getOrders } = useOrder()
-  const orders = getOrders()
-  const [activeTab, setActiveTab] = useState("preparing")
+  const router = useRouter()
+  const { user, isLoading: authLoading } = useAuth()
+  const [orders, setOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState("all")
 
-  const preparingOrders = orders.filter((o) => o.status === "preparing")
-  const onTheWayOrders = orders.filter((o) => o.status === "on-the-way")
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/?auth=login')
+      return
+    }
+
+    if (user) {
+      loadOrders()
+    }
+  }, [user, authLoading, router])
+
+  const loadOrders = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await orderAPI.getUserOrders()
+      
+      if (response.success && response.data) {
+        setOrders(response.data)
+      } else {
+        setError(response.error || "Không thể tải đơn hàng")
+      }
+    } catch (err: any) {
+      console.error("Error loading orders:", err)
+      setError(err.message || "Lỗi khi tải đơn hàng")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background py-8">
+        <div className="max-w-4xl mx-auto px-4">
+          <Card className="p-8 text-center">
+            <p className="text-lg text-destructive mb-4">{error}</p>
+            <Button onClick={loadOrders}>Thử lại</Button>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  const allOrders = orders
+  const preparingOrders = orders.filter((o) => ['pending', 'confirmed', 'preparing', 'ready'].includes(o.status))
+  const deliveringOrders = orders.filter((o) => o.status === "delivering")
   const deliveredOrders = orders.filter((o) => o.status === "delivered")
-  const ratedOrders = orders.filter((o) => o.rating !== undefined)
 
-  const OrderCard = ({ order }: { order: any }) => {
+  const OrderCard = ({ order }: { order: Order }) => {
     const statusInfo = getStatusBadge(order.status)
     const StatusIcon = statusInfo.icon
+    const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0)
 
     return (
       <Card className="p-4 hover:shadow-md transition-shadow">
         <div className="flex items-start justify-between mb-4">
           <div>
             <p className="text-sm text-muted-foreground">Mã đơn hàng</p>
-            <p className="font-bold text-primary">{order.id}</p>
+            <p className="font-bold text-primary">#{order._id.slice(-8)}</p>
           </div>
           <Badge variant={statusInfo.variant}>
             {StatusIcon && <StatusIcon className="w-3 h-3 mr-1" />}
@@ -47,9 +107,12 @@ export default function OrdersPage() {
         </div>
 
         <div className="space-y-2 mb-4 pb-4 border-b">
-          <p className="font-semibold text-foreground">{order.recipientInfo.address}</p>
+          <p className="font-semibold text-foreground">{order.shippingAddress.street}</p>
           <p className="text-sm text-muted-foreground">
-            {order.items.length} món • {order.items.reduce((sum: number, item: any) => sum + item.quantity, 0)} sản phẩm
+            {order.shippingAddress.district}, {order.shippingAddress.city}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {order.items.length} món • {totalItems} sản phẩm
           </p>
           <p className="text-lg font-bold text-primary">{order.totalPrice.toLocaleString("vi-VN")}đ</p>
         </div>
@@ -57,9 +120,9 @@ export default function OrdersPage() {
         {/* Items preview */}
         <div className="mb-4 pb-4 border-b">
           <div className="space-y-1">
-            {order.items.slice(0, 2).map((item: any) => (
-              <p key={item.id} className="text-sm text-muted-foreground">
-                • {item.name} x{item.quantity}
+            {order.items.slice(0, 2).map((item, idx) => (
+              <p key={idx} className="text-sm text-muted-foreground">
+                • {item.productName} x{item.quantity}
               </p>
             ))}
             {order.items.length > 2 && (
@@ -68,7 +131,7 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        <Link href={`/orders/${order.id}`}>
+        <Link href={`/orders/${order._id}`}>
           <Button size="sm" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
             Xem chi tiết
             <ArrowRight className="w-4 h-4 ml-2" />
@@ -99,25 +162,33 @@ export default function OrdersPage() {
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-4 mb-6">
-              <TabsTrigger value="preparing">Đang chuẩn bị ({preparingOrders.length})</TabsTrigger>
-              <TabsTrigger value="on-the-way">Đang giao ({onTheWayOrders.length})</TabsTrigger>
+              <TabsTrigger value="all">Tất cả ({allOrders.length})</TabsTrigger>
+              <TabsTrigger value="preparing">Đang xử lý ({preparingOrders.length})</TabsTrigger>
+              <TabsTrigger value="delivering">Đang giao ({deliveringOrders.length})</TabsTrigger>
               <TabsTrigger value="delivered">Đã giao ({deliveredOrders.length})</TabsTrigger>
-              <TabsTrigger value="rated">Đã đánh giá ({ratedOrders.length})</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="all" className="space-y-4">
+              {allOrders.length === 0 ? (
+                <Card className="p-8 text-center text-muted-foreground">Không có đơn hàng nào</Card>
+              ) : (
+                allOrders.map((order) => <OrderCard key={order._id} order={order} />)
+              )}
+            </TabsContent>
 
             <TabsContent value="preparing" className="space-y-4">
               {preparingOrders.length === 0 ? (
                 <Card className="p-8 text-center text-muted-foreground">Không có đơn hàng nào</Card>
               ) : (
-                preparingOrders.map((order) => <OrderCard key={order.id} order={order} />)
+                preparingOrders.map((order) => <OrderCard key={order._id} order={order} />)
               )}
             </TabsContent>
 
-            <TabsContent value="on-the-way" className="space-y-4">
-              {onTheWayOrders.length === 0 ? (
+            <TabsContent value="delivering" className="space-y-4">
+              {deliveringOrders.length === 0 ? (
                 <Card className="p-8 text-center text-muted-foreground">Không có đơn hàng nào</Card>
               ) : (
-                onTheWayOrders.map((order) => <OrderCard key={order.id} order={order} />)
+                deliveringOrders.map((order) => <OrderCard key={order._id} order={order} />)
               )}
             </TabsContent>
 
@@ -125,32 +196,7 @@ export default function OrdersPage() {
               {deliveredOrders.length === 0 ? (
                 <Card className="p-8 text-center text-muted-foreground">Không có đơn hàng nào</Card>
               ) : (
-                deliveredOrders.map((order) => <OrderCard key={order.id} order={order} />)
-              )}
-            </TabsContent>
-
-            <TabsContent value="rated" className="space-y-4">
-              {ratedOrders.length === 0 ? (
-                <Card className="p-8 text-center text-muted-foreground">Không có đơn hàng nào</Card>
-              ) : (
-                ratedOrders.map((order) => (
-                  <Card key={order.id} className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <p className="font-bold text-primary">{order.id}</p>
-                      <div className="flex gap-1">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-4 h-4 ${
-                              i < (order.rating || 0) ? "fill-primary text-primary" : "text-muted-foreground"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{order.review}</p>
-                  </Card>
-                ))
+                deliveredOrders.map((order) => <OrderCard key={order._id} order={order} />)
               )}
             </TabsContent>
           </Tabs>

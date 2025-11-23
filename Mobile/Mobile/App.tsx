@@ -19,6 +19,7 @@ import DeliveryScreen from './src/screen/DeliveryScreen';
 import PaymentScreen from './src/screen/PaymentScreen';
 import TrackingScreen from './src/screen/TrackingScreen';
 import OrderHistoryScreen from './src/screen/OrderHistoryScreen';
+import CheckoutScreen from './src/screen/CheckoutScreen';
 
 import { Colors } from './src/constants/Colors';
 
@@ -109,10 +110,10 @@ export default function App() {
               />
               <Stack.Screen
                 name="Delivery"
-                component={DeliveryScreen}
+                component={CheckoutScreen}
                 options={{
                   headerShown: true,
-                  title: 'Phương thức giao',
+                  title: 'Thanh toán',
                   headerStyle: { backgroundColor: Colors.primary },
                   headerTintColor: '#fff',
                   headerTitleStyle: { fontWeight: 'bold' },

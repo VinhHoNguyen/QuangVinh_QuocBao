@@ -19,7 +19,7 @@ import {
 } from "lucide-react"
 import { AccountPage } from "@/components/pages/account-page"
 import { MenuPage } from "@/components/pages/menu-page"
-import { OrderPage } from "@/components/pages/order-page"
+import { OrderPage } from "@/components/order-page"
 import { DroneNotificationPage } from "@/components/pages/drone-notification-page"
 import { AnalyticsPage } from "@/components/pages/analytics-page"
 

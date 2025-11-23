@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
+import { useAuth } from "@/lib/auth-context"
 
 interface LoginPageProps {
   onLogin: (restaurantName: string) => void
@@ -13,38 +14,48 @@ interface LoginPageProps {
 
 const DEMO_ACCOUNT = {
   restaurantName: "Phở Việt Nam",
-  email: "admin@pho-vietnam.com",
-  password: "demo123456",
+  email: "restaurant1@example.com",
+  password: "restaurant123",
 }
 
 export function LoginPage({ onLogin }: LoginPageProps) {
+  const { login } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [restaurantName, setRestaurantName] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (email && password && restaurantName) {
+    if (email && password) {
       setIsLoading(true)
-      setTimeout(() => {
-        onLogin(restaurantName)
+      setError("")
+      try {
+        await login(email, password)
+        // Get restaurant name from response (could be enhanced)
+        onLogin("Restaurant") // This will be updated with actual restaurant name
+      } catch (err: any) {
+        setError(err.message || "Login failed. Please check your credentials.")
         setIsLoading(false)
-      }, 500)
+      }
     }
   }
 
   const handleDemoLogin = () => {
-    setRestaurantName(DEMO_ACCOUNT.restaurantName)
     setEmail(DEMO_ACCOUNT.email)
     setPassword(DEMO_ACCOUNT.password)
 
     setTimeout(() => {
       setIsLoading(true)
-      setTimeout(() => {
-        onLogin(DEMO_ACCOUNT.restaurantName)
-        setIsLoading(false)
-      }, 500)
+      setError("")
+      login(DEMO_ACCOUNT.email, DEMO_ACCOUNT.password)
+        .then(() => {
+          onLogin(DEMO_ACCOUNT.restaurantName)
+        })
+        .catch((err) => {
+          setError(err.message || "Demo login failed")
+          setIsLoading(false)
+        })
     }, 100)
   }
 
@@ -64,20 +75,12 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         <Card className="bg-white border-slate-200 shadow-lg mb-6">
           <div className="p-8">
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Restaurant Name */}
-              <div className="space-y-2">
-                <Label htmlFor="restaurant" className="text-slate-700 text-sm font-medium">
-                  Tên Nhà Hàng
-                </Label>
-                <Input
-                  id="restaurant"
-                  placeholder="Nhập tên nhà hàng"
-                  value={restaurantName}
-                  onChange={(e) => setRestaurantName(e.target.value)}
-                  className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:ring-red-500/20"
-                  required
-                />
-              </div>
+              {/* Error Message */}
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  {error}
+                </div>
+              )}
 
               {/* Email */}
               <div className="space-y-2">
@@ -130,10 +133,6 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           <p className="text-sm font-semibold text-slate-700">Tài Khoản Demo (Bấm để đăng nhập):</p>
           <div className="bg-white border border-slate-200 rounded p-3 space-y-2 text-sm">
             <div>
-              <span className="text-slate-600">Tên Nhà Hàng: </span>
-              <span className="font-semibold text-slate-900">{DEMO_ACCOUNT.restaurantName}</span>
-            </div>
-            <div>
               <span className="text-slate-600">Email: </span>
               <span className="font-semibold text-slate-900">{DEMO_ACCOUNT.email}</span>
             </div>
@@ -142,6 +141,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               <span className="font-semibold text-slate-900">{DEMO_ACCOUNT.password}</span>
             </div>
           </div>
+          <p className="text-xs text-slate-500">Tài khoản này kết nối với MongoDB backend</p>
         </div>
       </div>
     </div>

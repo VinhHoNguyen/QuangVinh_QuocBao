@@ -19,6 +19,7 @@ export interface IUser extends Document {
   phone: string;
   role: UserRole;
   status: UserStatus;
+  restaurantId?: Schema.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,6 +31,7 @@ const userSchema = new Schema<IUser>({
   phone: { type: String, required: true },
   role: { type: String, enum: Object.values(UserRole), required: true },
   status: { type: String, enum: Object.values(UserStatus), default: UserStatus.ACTIVE },
+  restaurantId: { type: Schema.Types.ObjectId, ref: 'Restaurant' },
 }, {
   timestamps: true,
 });

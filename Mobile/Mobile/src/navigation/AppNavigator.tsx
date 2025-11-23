@@ -9,22 +9,17 @@ import DeliveryScreen from '../screen/DeliveryScreen';
 import PaymentScreen from '../screen/PaymentScreen';
 import TrackingScreen from '../screen/TrackingScreen';
 import HistoryScreen from '../screen/HistoryScreen';
-import { setNavigationRef } from '../context/AppContext';
+import { TestScreen } from '../screen/TestScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
   const navigationRef = useNavigationContainerRef();
 
-  React.useEffect(() => {
-    if (navigationRef) {
-      setNavigationRef(navigationRef);
-    }
-  }, [navigationRef]);
-
   return (
     <NavigationContainer ref={navigationRef}>
-      <Stack.Navigator initialRouteName="Home" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator initialRouteName="Test" screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Test" component={TestScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Cart" component={CartScreen} />

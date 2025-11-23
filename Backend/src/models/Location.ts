@@ -1,7 +1,7 @@
 import { Schema, model, Document } from 'mongoose';
 
 export interface ILocation extends Document {
-  type: 'restaurant' | 'drone_station';
+  type: 'restaurant' | 'customer' | 'warehouse' | 'drone_station';
   coords: {
     latitude: number;
     longitude: number;
@@ -10,7 +10,7 @@ export interface ILocation extends Document {
 }
 
 const locationSchema = new Schema<ILocation>({
-  type: { type: String, enum: ['restaurant', 'drone_station'], required: true },
+  type: { type: String, enum: ['restaurant', 'customer', 'warehouse', 'drone_station'], required: true },
   coords: {
     latitude: { type: Number, required: true },
     longitude: { type: Number, required: true },

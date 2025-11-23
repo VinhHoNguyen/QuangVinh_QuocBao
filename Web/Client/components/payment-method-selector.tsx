@@ -28,28 +28,28 @@ export interface PaymentDetails {
 
 const paymentMethods = [
   {
-    id: "cod",
+    id: "cash",
     label: "Thanh toán khi nhận hàng (COD)",
     description: "Thanh toán bằng tiền mặt hoặc thẻ khi nhận hàng",
     icon: Truck,
     disabledFor: ["drone"],
   },
   {
-    id: "ewallet",
+    id: "e_wallet",
     label: "Ví điện tử",
     description: "Momo, ZaloPay, ShopeePay...",
     icon: Wallet,
     disabledFor: [],
   },
   {
-    id: "bank",
+    id: "bank_transfer",
     label: "Chuyển khoản ngân hàng",
     description: "Chuyển tiền trực tiếp vào tài khoản",
     icon: Bank,
     disabledFor: [],
   },
   {
-    id: "visa",
+    id: "credit_card",
     label: "Thẻ ghi nợ / Tín dụng",
     description: "Visa, MasterCard...",
     icon: CreditCard,

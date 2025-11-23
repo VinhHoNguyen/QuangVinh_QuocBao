@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { useOrder } from "@/lib/order-context"
+import { useCart } from "@/lib/cart-context"
 import { useAuth } from "@/lib/auth-context"
 import { MapPin, Truck, CreditCard, ArrowLeft } from "lucide-react"
 import Link from "next/link"
@@ -15,7 +15,7 @@ import { PaymentMethodSelector, type PaymentDetails } from "@/components/payment
 export default function CheckoutPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const { cart, getCartTotal, createOrder, getSavedAddresses } = useOrder()
+  const { cart, totalPrice, loading: cartLoading, clearCart } = useCart()
 
   useEffect(() => {
     if (!user) {
@@ -28,14 +28,14 @@ export default function CheckoutPage() {
   const [email, setEmail] = useState("")
   const [address, setAddress] = useState("")
   const [deliveryMethod, setDeliveryMethod] = useState<"drone" | "motorcycle">("motorcycle")
-  const [paymentMethod, setPaymentMethod] = useState("cod")
+  const [paymentMethod, setPaymentMethod] = useState("cash")
   const [deliveryNote, setDeliveryNote] = useState("")
   const [saveAddress, setSaveAddress] = useState(false)
   const [loading, setLoading] = useState(false)
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null)
 
-  const savedAddresses = getSavedAddresses()
-  const total = getCartTotal()
+  // Use cart's totalPrice
+  const total = totalPrice
 
   const handlePaymentDetails = (details: PaymentDetails) => {
     setPaymentDetails(details)
@@ -52,25 +52,59 @@ export default function CheckoutPage() {
       return
     }
 
+    if (cart.length === 0) {
+      alert("Giỏ hàng trống")
+      return
+    }
+
     setLoading(true)
     try {
-      const order = createOrder(
-        {
-          fullName,
-          phone,
-          email,
-          address,
-          notes: deliveryNote,
-          saveForLater: saveAddress,
-        },
-        deliveryMethod,
-        paymentMethod,
-      )
+      // Get restaurant ID from first item (assuming all items from same restaurant)
+      const restaurantId = cart[0].restaurantId
 
-      router.push(`/order-success/${order.id}`)
-    } catch (error) {
-      alert("Lỗi khi tạo đơn hàng")
-      console.error(error)
+      if (!restaurantId) {
+        alert("Không tìm thấy thông tin nhà hàng")
+        return
+      }
+
+      // Prepare order data for API
+      const orderData = {
+        restaurantId: restaurantId,
+        items: cart.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity
+        })),
+        paymentMethod: paymentMethod,
+        shippingAddress: {
+          street: address,
+          city: "Hồ Chí Minh",
+          district: "Quận 1",
+          ward: "Phường 1",
+          coordinates: {
+            latitude: 10.762622,
+            longitude: 106.660172
+          }
+        }
+      }
+
+      // Import orderAPI
+      const { orderAPI } = await import("@/lib/api")
+      
+      // Create order via API
+      const response = await orderAPI.create(orderData)
+
+      if (response.success && response.data) {
+        // Clear cart after successful order
+        await clearCart()
+        
+        // Redirect to order success page
+        router.push(`/order-success/${response.data._id}`)
+      } else {
+        throw new Error(response.error || "Không thể tạo đơn hàng")
+      }
+    } catch (error: any) {
+      alert(error.message || "Lỗi khi tạo đơn hàng")
+      console.error("Order creation error:", error)
     } finally {
       setLoading(false)
     }
@@ -129,34 +163,8 @@ export default function CheckoutPage() {
                   placeholder="Địa chỉ giao hàng"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
+                  rows={3}
                 />
-
-                {/* Saved addresses */}
-                {savedAddresses.length > 0 && (
-                  <div className="border-t pt-4">
-                    <p className="text-sm font-medium text-muted-foreground mb-2">Địa chỉ đã lưu:</p>
-                    {savedAddresses.map((addr, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => {
-                          setFullName(addr.fullName)
-                          setPhone(addr.phone)
-                          setEmail(addr.email)
-                          setAddress(addr.address)
-                        }}
-                        className="block w-full text-left p-2 rounded hover:bg-muted text-sm"
-                      >
-                        {addr.fullName} - {addr.address}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Save address checkbox */}
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={saveAddress} onChange={(e) => setSaveAddress(e.target.checked)} />
-                  <span className="text-sm text-muted-foreground">Lưu địa chỉ này để dùng lại lần sau</span>
-                </label>
               </div>
             </Card>
 

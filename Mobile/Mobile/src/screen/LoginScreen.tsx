@@ -1,46 +1,30 @@
 // src/screens/LoginScreen.tsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage'; 
+import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ActivityIndicator } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { Colors } from '../constants/Colors';
 
 export default function LoginScreen({ navigation }: any) {
-  const { setUser } = useApp();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { login } = useApp();
+  const [email, setEmail] = useState('customer1@gmail.com');
+  const [password, setPassword] = useState('Customer@123');
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
       return Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ email và mật khẩu');
     }
 
-    // MOCK DATABASE: Kiểm tra user đã đăng ký
     try {
-      const usersData = await AsyncStorage.getItem('registered_users');
-      const users = usersData ? JSON.parse(usersData) : [];
-
-      const foundUser = users.find((u: any) => u.email === email && u.password === password);
-
-      if (!foundUser) {
-        return Alert.alert('Lỗi đăng nhập', 'Email hoặc mật khẩu không đúng!');
-      }
-
-      // Đăng nhập thành công → lưu user
-      const loginUser = {
-        id: foundUser.id,
-        name: foundUser.name,
-        email: foundUser.email,
-        phone: foundUser.phone,
-        address: foundUser.address,
-      };
-
-      setUser(loginUser);
-      Alert.alert('Thành công!', `Chào ${foundUser.name}!`, [
+      setLoading(true);
+      await login(email, password);
+      Alert.alert('Thành công', 'Đăng nhập thành công!', [
         { text: 'OK', onPress: () => navigation.replace('Main') }
       ]);
-    } catch (e) {
-      Alert.alert('Lỗi', 'Không thể đăng nhập. Vui lòng thử lại.');
+    } catch (error: any) {
+      // Error được handle trong login method
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -65,18 +49,34 @@ export default function LoginScreen({ navigation }: any) {
         style={styles.input}
       />
 
-      <TouchableOpacity onPress={handleLogin} style={styles.loginBtn}>
-        <Text style={styles.loginBtnText}>Đăng Nhập</Text>
+      <TouchableOpacity 
+        onPress={handleLogin} 
+        style={[styles.loginBtn, loading && { opacity: 0.6 }]}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.loginBtnText}>Đăng Nhập</Text>
+        )}
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.registerLink}
         onPress={() => navigation.navigate('Register')}
+        disabled={loading}
       >
         <Text style={styles.registerText}>
           Chưa có tài khoản? <Text style={styles.bold}>Đăng ký ngay</Text>
         </Text>
       </TouchableOpacity>
+
+      {/* Test Account Info */}
+      <View style={styles.infoBox}>
+        <Text style={styles.infoTitle}>Tài khoản test:</Text>
+        <Text style={styles.infoText}>Email: customer1@gmail.com</Text>
+        <Text style={styles.infoText}>Pass: Customer@123</Text>
+      </View>
     </View>
   );
 }
@@ -127,5 +127,20 @@ const styles = StyleSheet.create({
   bold: {
     color: Colors.primary,
     fontWeight: 'bold',
+  },
+  infoBox: {
+    backgroundColor: '#f0f0f0',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  infoTitle: {
+    fontWeight: 'bold',
+    marginBottom: 6,
+    color: '#333',
+  },
+  infoText: {
+    color: '#666',
+    fontSize: 13,
   },
 });

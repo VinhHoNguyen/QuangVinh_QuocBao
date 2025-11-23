@@ -1,55 +1,41 @@
 // src/screens/HomeScreen.tsx
-import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, Image, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
 import { useApp } from '../context/AppContext';
 
-
-const mockData = [
-  {
-    id: 1,
-    name: 'Cơm Tấm Huỳnh',
-    minOrder: 45000,
-    rating: 4.9,
-    reviews: 191,
-    distance: 0.7,
-    image: require('../assets/vietnamese-sizzling-crepe.jpg'),
-    desc: 'Cơm tấm sườn béo ngậy, nước mắm đậm đà.',
-  },
-  {
-    id: 2,
-    name: 'Bún Chả Hà Nội 36',
-    minOrder: 50000,
-    rating: 4.8,
-    reviews: 342,
-    distance: 2.3,
-    image: require('../assets/vietnamese-sizzling-crepe.jpg'),
-    desc: 'Bún chả truyền thống, thịt nướng thơm lừng.',
-  },
-  {
-    id: 3,
-    name: 'Bánh Xèo Hải Phòng',
-    minOrder: 55000,
-    rating: 4.8,
-    reviews: 307,
-    distance: 1.5,
-    image: require('../assets/vietnamese-sizzling-crepe.jpg'), 
-    desc: 'Bánh xèo giòn tan, nhân tôm thịt đầy đặn.',
-  },
-];
-
 export default function HomeScreen({ navigation }: any) {
   const [search, setSearch] = useState('');
-  const { cart } = useApp();
+  const [restaurants, setRestaurants] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { cart, loadRestaurants } = useApp();
+
+  // Load dữ liệu từ API khi component mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const data = await loadRestaurants();
+      setRestaurants(data || []);
+    } catch (error) {
+      console.error('Load restaurants error:', error);
+      setRestaurants([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // FILTER DỮ LIỆU THEO TÊN NHÀ HÀNG
   const filteredData = useMemo(() => {
-    if (!search.trim()) return mockData;
-    return mockData.filter(item =>
+    if (!search.trim()) return restaurants;
+    return restaurants.filter(item =>
       item.name.toLowerCase().includes(search.toLowerCase().trim())
     );
-  }, [search]);
+  }, [search, restaurants]);
 
   return (
     <ScrollView style={styles.container}>
@@ -89,30 +75,36 @@ export default function HomeScreen({ navigation }: any) {
         </View>
       </View>
 
-      {/* Danh sách nhà hàng – DỮ LIỆU ĐÃ LỌC */}
+      {/* Danh sách nhà hàng */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>
           {search ? `Kết quả tìm kiếm (${filteredData.length})` : 'Nhà hàng phổ biến'}
         </Text>
 
-        {filteredData.length === 0 ? (
+        {loading ? (
+          <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 20 }} />
+        ) : filteredData.length === 0 ? (
           <Text style={styles.emptyText}>Không tìm thấy nhà hàng nào</Text>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {filteredData.map((item) => (
+            {filteredData.map((restaurant) => (
               <TouchableOpacity
-                key={item.id}
+                key={restaurant._id}
                 style={styles.restaurantCard}
-                onPress={() => navigation.navigate('RestaurantDetail', { restaurant: item })}
+                onPress={() => navigation.navigate('RestaurantDetail', { restaurantId: restaurant._id, restaurant })}
               >
-                <Image source={{ uri: item.image }} style={styles.restaurantImage} />
+                <Image 
+                  source={{ uri: restaurant.image }} 
+                  style={styles.restaurantImage}
+                  defaultSource={require('../assets/vietnamese-sizzling-crepe.jpg')}
+                />
                 <View style={styles.restaurantInfo}>
-                  <Text style={styles.restaurantName}>{item.name}</Text>
+                  <Text style={styles.restaurantName}>{restaurant.name}</Text>
                   <Text style={styles.restaurantRating}>
-                    {item.rating} ({item.reviews} đánh giá) • {item.distance}km
+                    ⭐ {restaurant.rating} • {restaurant.phone}
                   </Text>
                   <Text style={styles.restaurantPrice}>
-                    Đơn tối thiểu: {item.minOrder.toLocaleString()}đ
+                    Đơn tối thiểu: {restaurant.minOrder.toLocaleString()}đ
                   </Text>
                   <View style={styles.addButton}>
                     <Text style={styles.addButtonText}>Xem menu</Text>

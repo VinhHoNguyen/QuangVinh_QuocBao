@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useOrder } from "@/lib/order-context"
 import { useAuth } from "@/lib/auth-context"
+import { useCart } from "@/lib/cart-context"
 import { AuthModal } from "@/components/auth-modal"
 import { useRestaurants, useProducts } from "@/lib/hooks"
 import { SearchModal } from "@/components/search-modal"
@@ -39,8 +40,9 @@ export default function Home() {
   const [showFeatured, setShowFeatured] = useState(false)
   const [showNearMe, setShowNearMe] = useState(false)
 
-  const { cart, addToCart } = useOrder()
+  const { cart: orderCart } = useOrder() // Keep for backward compatibility if needed
   const { user, logout } = useAuth()
+  const { cart, addToCart: addToCartAPI, totalItems } = useCart()
   
   // Fetch real data from backend API
   const { restaurants, loading: restaurantsLoading, error: restaurantsError } = useRestaurants("active")
@@ -113,13 +115,19 @@ export default function Home() {
 
   const visibleItems = filteredAndSorted.slice(0, visibleCount)
 
-  const handleAddToCart = (item: Dish) => {
-    addToCart({
-      id: item.id,
-      name: item.name,
-      price: item.price,
-      image: item.image,
-    })
+  const handleAddToCart = async (item: Dish) => {
+    if (!user) {
+      setAuthOpen(true)
+      return
+    }
+    
+    try {
+      await addToCartAPI(item.id, 1)
+      // Optional: Show success toast
+    } catch (error) {
+      console.error('Error adding to cart:', error)
+      // Optional: Show error toast
+    }
   }
 
   return (
@@ -153,7 +161,7 @@ export default function Home() {
                 <Button variant="outline" size="sm" onClick={() => setAuthOpen(true)}>
                   Đăng nhập
                 </Button>
-                <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => setAuthOpen(true)}>
+                <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white" onClick={() => setAuthOpen(true)}>
                   Đăng ký
                 </Button>
               </div>
@@ -166,12 +174,12 @@ export default function Home() {
             </Link>
 
             {user ? (
-              <Link href="/checkout">
+              <Link href="/cart">
                 <Button variant="ghost" size="icon" className="relative">
                   <ShoppingCart className="w-5 h-5" />
-                  {cart.length > 0 && (
+                  {totalItems > 0 && (
                     <span className="absolute -top-1 -right-1 bg-accent text-accent-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                      {cart.length}
+                      {totalItems}
                     </span>
                   )}
                 </Button>
@@ -185,11 +193,6 @@ export default function Home() {
                 className="relative opacity-50 cursor-not-allowed"
               >
                 <ShoppingCart className="w-5 h-5" />
-                {cart.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-accent text-accent-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                    {cart.length}
-                  </span>
-                )}
               </Button>
             )}
           </div>
@@ -351,7 +354,7 @@ export default function Home() {
                     </div>
 
                     <Button
-                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+                      className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold"
                       asChild
                     >
                       <span>Xem menu</span>
@@ -504,14 +507,17 @@ export default function Home() {
       <SearchModal open={searchModalOpen} onOpenChange={setSearchModalOpen} />
 
       {/* Floating cart for small screens */}
-      {user && cart.length > 0 && (
-        <Link href="/checkout">
+      {user && totalItems > 0 && (
+        <Link href="/cart">
           <div className="fixed bottom-4 right-4 md:hidden">
             <Button
               size="lg"
               className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-full w-14 h-14 p-0 flex items-center justify-center shadow-lg"
             >
               <ShoppingCart className="w-6 h-6" />
+              <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                {totalItems}
+              </span>
             </Button>
           </div>
         </Link>

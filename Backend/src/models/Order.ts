@@ -27,7 +27,6 @@ export enum PaymentStatus {
 }
 
 export interface IOrderItem {
-  _id: Types.ObjectId;
   productId: Types.ObjectId;
   productName: string;
   price: number;

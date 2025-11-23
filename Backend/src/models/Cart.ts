@@ -28,9 +28,6 @@ const cartSchema = new Schema<ICart>({
   timestamps: true,
 });
 
-// Index for querying cart by user
-cartSchema.index({ userId: 1 });
-
 // Method to calculate total price
 cartSchema.methods.calculateTotal = function() {
   this.totalPrice = this.items.reduce((sum: number, item: ICartItem) => sum + (item.price * item.quantity), 0);

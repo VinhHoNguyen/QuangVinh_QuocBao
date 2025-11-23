@@ -21,6 +21,15 @@ export interface User {
   updatedAt: string;
 }
 
+export interface AuthResponse {
+  _id: string;
+  email: string;
+  name: string;
+  phone?: string;
+  role: string;
+  token: string;
+}
+
 export interface Restaurant {
   _id: string;
   ownerId: string;
@@ -162,14 +171,14 @@ const apiRequest = async <T = any>(
 // Auth APIs
 export const authAPI = {
   register: async (name: string, email: string, password: string, phone: string) => {
-    return apiRequest<{ uid: string; email: string; name: string; role: string }>('/auth/register', {
+    return apiRequest<AuthResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password, phone, role: 'customer' }),
     });
   },
 
   login: async (email: string, password: string) => {
-    return apiRequest<{ uid: string; email: string; name: string; role: string }>('/auth/login', {
+    return apiRequest<AuthResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
