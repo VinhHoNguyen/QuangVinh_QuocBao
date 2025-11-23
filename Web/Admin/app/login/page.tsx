@@ -5,40 +5,45 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Store, Eye, EyeOff } from "lucide-react"
-
-const MOCK_ACCOUNTS = [{ email: "admin@fastfood.com", password: "admin123", role: "Admin Hệ thống" }]
+import { useAdminAuth } from "@/lib/admin-auth-context"
+import { toast } from "sonner"
 
 export default function LoginPage() {
   const router = useRouter()
+  const { login } = useAdminAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setLoading(true)
 
-    const foundUser = MOCK_ACCOUNTS.find((acc) => acc.email === email && acc.password === password)
-
-    setTimeout(() => {
-      if (foundUser) {
-        localStorage.setItem(
-          "adminAuth",
-          JSON.stringify({
-            email,
-            role: foundUser.role,
-            authenticated: true,
-          }),
-        )
-        router.push("/admin")
+    try {
+      await login(email, password)
+      toast.success("Đăng nhập thành công!")
+      // Router push is handled in login function
+    } catch (error: any) {
+      const errorMessage = error.message || "Đăng nhập thất bại"
+      
+      // Hiển thị thông báo chi tiết hơn
+      if (errorMessage.includes("Invalid credentials") || errorMessage.includes("credentials")) {
+        const friendlyMessage = "Email hoặc mật khẩu không đúng. Vui lòng kiểm tra lại hoặc liên hệ quản trị viên nếu chưa có tài khoản."
+        setError(friendlyMessage)
+        toast.error(friendlyMessage, { duration: 5000 })
+      } else if (errorMessage.includes("không có quyền")) {
+        setError(errorMessage)
+        toast.error(errorMessage, { duration: 5000 })
       } else {
-        setError("Email hoặc mật khẩu không chính xác")
+        setError("Không thể đăng nhập. Vui lòng thử lại sau hoặc liên hệ quản trị viên.")
+        toast.error("Không thể đăng nhập. Vui lòng thử lại sau.", { duration: 5000 })
       }
+    } finally {
       setLoading(false)
-    }, 600)
+    }
   }
 
   const handleQuickLogin = (email: string, password: string) => {
@@ -113,22 +118,19 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        {/* Mock Data Section */}
+        {/* Demo Account Section */}
         <div className="space-y-3">
-          <p className="text-center text-xs text-muted-foreground font-sans mb-3">Tài khoản demo:</p>
-          {MOCK_ACCOUNTS.map((account) => (
-            <button
-              key={account.email}
-              onClick={() => handleQuickLogin(account.email, account.password)}
-              className="w-full bg-muted hover:bg-muted/70 border border-border rounded-lg p-3 text-left transition-all hover:border-primary group"
-            >
-              <div className="font-medium text-foreground group-hover:text-primary font-sans text-sm">
-                {account.role}
-              </div>
-              <div className="text-xs text-muted-foreground font-sans">{account.email}</div>
-              <div className="text-xs text-muted-foreground font-sans">Pass: {account.password}</div>
-            </button>
-          ))}
+          <p className="text-center text-xs text-muted-foreground font-sans mb-3">Tài khoản demo (nếu có trong database):</p>
+          <button
+            onClick={() => handleQuickLogin("admin@fastfood.com", "admin123")}
+            className="w-full bg-muted hover:bg-muted/70 border border-border rounded-lg p-3 text-left transition-all hover:border-primary group"
+          >
+            <div className="font-medium text-foreground group-hover:text-primary font-sans text-sm">
+              Admin Hệ thống
+            </div>
+            <div className="text-xs text-muted-foreground font-sans">admin@fastfood.com</div>
+            <div className="text-xs text-muted-foreground font-sans">Pass: admin123</div>
+          </button>
         </div>
       </div>
     </div>

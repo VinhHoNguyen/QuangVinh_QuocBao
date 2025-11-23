@@ -86,26 +86,26 @@ export const authAPI = {
 export const orderAPI = {
   // Get all orders for a restaurant
   getRestaurantOrders: async (restaurantId: string): Promise<Order[]> => {
-    const response = await api.get<Order[]>(`/orders/restaurant/${restaurantId}`);
-    return response.data;
+    const response = await api.get<{ success: boolean; data: Order[] }>(`/orders/restaurant/${restaurantId}`);
+    return response.data.data || [];
   },
 
   // Get single order details
   getById: async (orderId: string): Promise<Order> => {
-    const response = await api.get<Order>(`/orders/${orderId}`);
-    return response.data;
+    const response = await api.get<{ success: boolean; data: Order }>(`/orders/${orderId}`);
+    return response.data.data;
   },
 
   // Update order status (restaurant confirms, prepares, etc.)
   updateStatus: async (orderId: string, status: Order['status']): Promise<Order> => {
-    const response = await api.patch<Order>(`/orders/${orderId}/status`, { status });
-    return response.data;
+    const response = await api.patch<{ success: boolean; data: Order }>(`/orders/${orderId}/status`, { status });
+    return response.data.data;
   },
 
   // Cancel order with reason
   cancelOrder: async (orderId: string, reason: string): Promise<Order> => {
-    const response = await api.patch<Order>(`/orders/${orderId}/cancel`, { reason });
-    return response.data;
+    const response = await api.patch<{ success: boolean; data: Order }>(`/orders/${orderId}/cancel`, { reason });
+    return response.data.data;
   },
 };
 

@@ -16,8 +16,11 @@ import {
   AreaChart,
   Area,
 } from "recharts"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import dynamic from "next/dynamic"
+import { adminDashboardAPI, adminOrdersAPI, adminRestaurantsAPI, adminDronesAPI } from "@/lib/admin-api"
+import { useAdminWebSocket } from "@/lib/admin-websocket"
+import { toast } from "sonner"
 
 const DroneMap = dynamic(() => import("@/components/drone-map").then(mod => mod.default), { ssr: false })
 
@@ -91,49 +94,97 @@ const dronePerformance = [
 
 export default function AdminDashboard() {
   const [timePeriod, setTimePeriod] = useState<"day" | "week" | "month">("week")
+  const [loading, setLoading] = useState(true)
+  const [dashboardStats, setDashboardStats] = useState<any>(null)
+  const { isConnected } = useAdminWebSocket()
 
-  const totalOrders = weeklyData.reduce((sum, d) => sum + d.orders, 0)
-  const totalRevenue = weeklyData.reduce((sum, d) => sum + d.revenue, 0)
-  const totalCompleted = weeklyData.reduce((sum, d) => sum + d.completed, 0)
-  const completionRate = ((totalCompleted / totalOrders) * 100).toFixed(1)
-  const totalNewUsers = 127
-  const activeDrones = 38
+  // Load dashboard stats
+  useEffect(() => {
+    loadDashboardData()
+  }, [])
+
+  // Listen for real-time updates
+  useEffect(() => {
+    const handleRefresh = () => {
+      loadDashboardData()
+    }
+
+    window.addEventListener('admin:order:refresh', handleRefresh)
+    window.addEventListener('admin:restaurant:refresh', handleRefresh)
+    window.addEventListener('admin:drone:refresh', handleRefresh)
+
+    return () => {
+      window.removeEventListener('admin:order:refresh', handleRefresh)
+      window.removeEventListener('admin:restaurant:refresh', handleRefresh)
+      window.removeEventListener('admin:drone:refresh', handleRefresh)
+    }
+  }, [])
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true)
+      const stats = await adminDashboardAPI.getStats()
+      setDashboardStats(stats)
+    } catch (error: any) {
+      console.error('Error loading dashboard:', error)
+      toast.error('Không thể tải dữ liệu dashboard')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading || !dashboardStats) {
+    return (
+      <div className="p-6 flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Đang tải dữ liệu...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const completionRate = dashboardStats.totalOrders > 0 
+    ? ((dashboardStats.completedOrders / dashboardStats.totalOrders) * 100).toFixed(1)
+    : '0.0'
+
+  const totalDrones = dashboardStats.activeDrones + 10 // Estimate inactive drones
 
   const stats = [
     {
-      label: "Tổng đơn hôm nay",
-      value: "187",
-      change: "+12%",
+      label: "Tổng đơn hàng",
+      value: dashboardStats.totalOrders.toString(),
+      change: "Tất cả",
       icon: "📦",
     },
     {
-      label: "Đang giao",
-      value: "45",
-      change: "Live",
+      label: "Đang xử lý",
+      value: dashboardStats.activeOrders.toString(),
+      change: isConnected ? "Live ⚡" : "Offline",
       icon: "🚁",
     },
     {
       label: "Tỷ lệ hoàn thành",
       value: `${completionRate}%`,
-      change: "+3.2%",
+      change: `${dashboardStats.completedOrders}/${dashboardStats.totalOrders}`,
       icon: "✅",
     },
     {
-      label: "Doanh thu hôm nay",
-      value: "12.5M đ",
-      change: "+8.5%",
+      label: "Tổng doanh thu",
+      value: `${(dashboardStats.totalRevenue / 1000).toFixed(1)}K đ`,
+      change: "Đã giao",
       icon: "💰",
     },
     {
-      label: "Người dùng mới",
-      value: totalNewUsers.toString(),
-      change: "+5%",
-      icon: "👥",
+      label: "Nhà hàng",
+      value: dashboardStats.totalRestaurants.toString(),
+      change: "Hoạt động",
+      icon: "🏪",
     },
     {
       label: "Drone hoạt động",
-      value: `${activeDrones}/55`,
-      change: "69%",
+      value: `${dashboardStats.activeDrones}/${totalDrones}`,
+      change: `${Math.round((dashboardStats.activeDrones / totalDrones) * 100)}%`,
       icon: "⚡",
     },
   ]

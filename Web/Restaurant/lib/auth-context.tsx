@@ -41,23 +41,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       console.log('[Restaurant Auth] Login response:', response);
 
-      // Extract token from response.data if nested
-      const authToken = response.token;
-      const userData = response;
+      // Extract token and user data from response.data
+      const authToken = response.data?.token;
+      const userData = response.data;
 
       if (!authToken) {
-        throw new Error('No token received from server');
+        throw new Error('Không nhận được token từ server. Vui lòng thử lại.');
       }
 
-      // Check if user is restaurant role
-      if (userData.role !== 'restaurant') {
-        throw new Error('This account is not a restaurant account');
+      // Check if user is restaurant_owner role
+      if (userData.role !== 'restaurant_owner') {
+        throw new Error('Tài khoản này không phải là tài khoản nhà hàng. Vui lòng sử dụng tài khoản nhà hàng để đăng nhập.');
       }
 
       // Get restaurantId - should be in userData
       const restId = userData.restaurantId;
       if (!restId) {
-        throw new Error('Restaurant ID not found for this account');
+        throw new Error('Không tìm thấy thông tin nhà hàng cho tài khoản này. Vui lòng liên hệ admin.');
       }
 
       // Save to state
@@ -73,7 +73,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[Restaurant Auth] Login successful, restaurant ID:', restId);
     } catch (error: any) {
       console.error('[Restaurant Auth] Login error:', error);
-      throw new Error(error.response?.data?.message || error.message || 'Login failed');
+      
+      // Enhanced error messages based on status code
+      if (error.response) {
+        const status = error.response.status;
+        const serverMessage = error.response.data?.message;
+        
+        if (status === 401) {
+          throw new Error('Email hoặc mật khẩu không đúng. Bạn chưa có tài khoản hoặc thông tin đăng nhập không chính xác.');
+        } else if (status === 404) {
+          throw new Error('Tài khoản không tồn tại trong hệ thống. Vui lòng đăng ký tài khoản mới.');
+        } else if (status === 403) {
+          throw new Error('Tài khoản của bạn đã bị khóa hoặc chưa được kích hoạt. Vui lòng liên hệ admin.');
+        } else if (status === 500) {
+          throw new Error('Lỗi server. Vui lòng thử lại sau hoặc liên hệ admin.');
+        } else if (serverMessage) {
+          throw new Error(serverMessage);
+        }
+      }
+      
+      // Network or other errors
+      if (error.message && !error.response) {
+        throw error; // Re-throw custom errors from above
+      }
+      
+      throw new Error('Đăng nhập thất bại. Vui lòng kiểm tra kết nối internet và thử lại.');
     }
   };
 

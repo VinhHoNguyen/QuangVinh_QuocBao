@@ -35,11 +35,12 @@ export const setupWebSocket = (httpServer: HTTPServer) => {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
-      (socket as any).userId = decoded.id;
+      (socket as any).userId = decoded._id || decoded.id;
       (socket as any).role = decoded.role;
-      (socket as any).restaurantId = decoded.restaurantId;
+      (socket as any).restaurantId = socket.handshake.auth.restaurantId;
       next();
     } catch (err) {
+      console.error('WebSocket auth error:', err);
       next(new Error('Authentication error'));
     }
   });

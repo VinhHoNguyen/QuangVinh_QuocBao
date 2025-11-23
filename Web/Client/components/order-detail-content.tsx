@@ -4,12 +4,28 @@ import { useState, useEffect } from "react"
 import { useOrder } from "@/lib/order-context"
 import { Button } from "@/components/ui/button"
 import OrderTrackingTimeline from "@/components/order-tracking-timeline"
-import OrderTrackingMap from "@/components/order-tracking-map"
 import ShipperInfoCard from "@/components/shipper-info-card"
 import DroneStatusCard from "@/components/drone-status-card"
 import OrderNotificationToast, { type NotificationMessage } from "@/components/order-notification-toast"
 import { ChevronLeft, Star } from "lucide-react"
 import Link from "next/link"
+import dynamic from "next/dynamic"
+
+// Dynamic import to avoid SSR issues with Leaflet
+const OrderTrackingMap = dynamic(
+  () => import("@/components/order-tracking-map-leaflet"),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+          <div className="h-[400px] bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    )
+  }
+)
 
 export default function OrderDetailContent({ orderId }: { orderId: string }) {
   const { getOrderById, updateOrderStatus } = useOrder()
@@ -125,8 +141,11 @@ export default function OrderDetailContent({ orderId }: { orderId: string }) {
                 latitude={order.driverInfo.latitude}
                 longitude={order.driverInfo.longitude}
                 deliveryMethod={order.deliveryMethod}
-                recipientLat={21.0285}
-                recipientLng={105.8542}
+                recipientLat={order.recipientInfo.address.coordinates?.latitude || 21.0285}
+                recipientLng={order.recipientInfo.address.coordinates?.longitude || 105.8542}
+                restaurantLat={21.0278}
+                restaurantLng={105.8342}
+                status={order.status}
               />
             )}
 

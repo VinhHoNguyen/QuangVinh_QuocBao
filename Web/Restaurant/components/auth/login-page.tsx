@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth-context"
+import { toast } from "sonner"
 
 interface LoginPageProps {
   onLogin: (restaurantName: string) => void
@@ -32,10 +33,46 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       setError("")
       try {
         await login(email, password)
+        toast.success("Đăng nhập thành công!")
         // Get restaurant name from response (could be enhanced)
         onLogin("Restaurant") // This will be updated with actual restaurant name
       } catch (err: any) {
-        setError(err.message || "Login failed. Please check your credentials.")
+        const errorMessage = err.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin."
+        setError(errorMessage)
+        
+        // Show appropriate toast based on error message
+        if (errorMessage.includes("không đúng") || errorMessage.includes("không chính xác")) {
+          toast.error("❌ Đăng nhập thất bại!", {
+            description: "Email hoặc mật khẩu không đúng. Bạn chưa có tài khoản hoặc thông tin không chính xác.",
+            duration: 5000,
+          })
+        } else if (errorMessage.includes("không tồn tại") || errorMessage.includes("không tìm thấy")) {
+          toast.error("❌ Tài khoản không tồn tại!", {
+            description: "Tài khoản này chưa có trong hệ thống. Vui lòng đăng ký tài khoản mới hoặc liên hệ admin.",
+            duration: 5000,
+          })
+        } else if (errorMessage.includes("không phải") || errorMessage.includes("nhà hàng")) {
+          toast.error("❌ Tài khoản không hợp lệ!", {
+            description: "Tài khoản này không phải là tài khoản nhà hàng. Vui lòng sử dụng tài khoản nhà hàng.",
+            duration: 5000,
+          })
+        } else if (errorMessage.includes("bị khóa") || errorMessage.includes("chưa được kích hoạt")) {
+          toast.error("❌ Tài khoản bị hạn chế!", {
+            description: "Tài khoản của bạn đã bị khóa hoặc chưa được kích hoạt. Vui lòng liên hệ admin.",
+            duration: 6000,
+          })
+        } else if (errorMessage.includes("server") || errorMessage.includes("kết nối")) {
+          toast.error("⚠️ Lỗi kết nối!", {
+            description: errorMessage,
+            duration: 5000,
+          })
+        } else {
+          toast.error("❌ Đăng nhập thất bại!", {
+            description: errorMessage,
+            duration: 5000,
+          })
+        }
+        
         setIsLoading(false)
       }
     }
@@ -50,10 +87,15 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       setError("")
       login(DEMO_ACCOUNT.email, DEMO_ACCOUNT.password)
         .then(() => {
+          toast.success("Đăng nhập thành công với tài khoản demo!")
           onLogin(DEMO_ACCOUNT.restaurantName)
         })
         .catch((err) => {
-          setError(err.message || "Demo login failed")
+          const errorMessage = err.message || "Demo login failed"
+          setError(errorMessage)
+          toast.error("❌ Đăng nhập demo thất bại!", {
+            description: "Tài khoản demo chưa có trong hệ thống hoặc mật khẩu không đúng."
+          })
           setIsLoading(false)
         })
     }, 100)
@@ -77,8 +119,14 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Error Message */}
               {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                  {error}
+                <div className="p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <span className="text-red-500 text-xl">❌</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-red-800 mb-1">Đăng nhập thất bại</p>
+                      <p className="text-sm text-red-700">{error}</p>
+                    </div>
+                  </div>
                 </div>
               )}
 

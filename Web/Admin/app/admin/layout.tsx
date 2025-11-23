@@ -35,7 +35,6 @@ export default function AdminLayout({
   }, [router])
 
   const menuItems = [
-    { href: "/admin", label: "Bảng điều khiển", icon: Users },
     { href: "/admin/users", label: "Quản lý người dùng", icon: Users },
     { href: "/admin/restaurants", label: "Quản lý nhà hàng", icon: Store },
     { href: "/admin/drones", label: "Quản lý Drone", icon: Package },
