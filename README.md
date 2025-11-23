@@ -30,58 +30,6 @@ Hệ thống giao đồ ăn bằng drone với React/Next.js frontend và Node.j
 
 
 
-### Luồng Dữ Liệu Chính
-
-```mermaid
-sequenceDiagram
-    participant C as Customer App
-    participant R as Restaurant App
-    participant A as Admin App
-    participant API as API Server
-    participant Auth as Authentication
-    participant DB as MongoDB
-    participant FB as Firebase
-
-    Note over C,FB: 1. User Authentication Flow
-    C->>API: POST /api/auth/login
-    API->>Auth: Verify credentials
-    Auth->>DB: Check user data
-    DB-->>Auth: User info
-    Auth->>FB: Validate with Firebase
-    FB-->>Auth: Token
-    Auth-->>API: JWT Token
-    API-->>C: Login success + Token
-
-    Note over C,FB: 2. Order Creation Flow
-    C->>API: POST /api/orders (with JWT)
-    API->>Auth: Verify token
-    Auth-->>API: User verified
-    API->>DB: Create order
-    DB-->>API: Order created
-    API->>DB: Find available drone
-    DB-->>API: Drone assigned
-    API->>DB: Create delivery
-    DB-->>API: Delivery created
-    API-->>C: Order confirmation
-
-    Note over C,FB: 3. Restaurant Management Flow
-    R->>API: PUT /api/products/:id (with JWT)
-    API->>Auth: Verify restaurant owner
-    Auth-->>API: Owner verified
-    API->>FB: Upload image (if any)
-    FB-->>API: Image URL
-    API->>DB: Update product
-    DB-->>API: Product updated
-    API-->>R: Update success
-
-    Note over C,FB: 4. Admin Monitoring Flow
-    A->>API: GET /api/analytics/restaurant/:id
-    API->>Auth: Verify admin role
-    Auth-->>API: Admin verified
-    API->>DB: Calculate statistics
-    DB-->>API: Analytics data
-    API-->>A: Statistics response
-```
 
 ## 🛠️ Công Nghệ Sử Dụng
 
