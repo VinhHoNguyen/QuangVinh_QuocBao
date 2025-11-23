@@ -1,12 +1,11 @@
 // src/screens/RegisterScreen.tsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ScrollView } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { Colors } from '../constants/Colors';
 
 export default function RegisterScreen({ navigation }: any) {
-  const { setUser } = useApp();
+  const { register } = useApp();
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -15,13 +14,14 @@ export default function RegisterScreen({ navigation }: any) {
     phone: '',
     address: '',
   });
+  const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    const { name, email, password, confirmPassword, phone, address } = form;
+    const { name, email, password, confirmPassword, phone } = form;
 
     // Kiểm tra đầy đủ
-    if (!name || !email || !password || !confirmPassword || !phone || !address) {
-      return Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin');
+    if (!name || !email || !password || !confirmPassword || !phone) {
+      return Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin bắt buộc');
     }
 
     if (password !== confirmPassword) {
@@ -33,45 +33,17 @@ export default function RegisterScreen({ navigation }: any) {
     }
 
     try {
-      // Lấy danh sách user đã đăng ký
-      const usersData = await AsyncStorage.getItem('registered_users');
-      const users = usersData ? JSON.parse(usersData) : [];
-
-      // Kiểm tra email trùng
-      if (users.some((u: any) => u.email === email)) {
-        return Alert.alert('Lỗi', 'Email này đã được đăng ký!');
-      }
-
-      // Tạo user mới
-      const newUser = {
-        id: Date.now().toString(),
-        name,
-        email,
-        password, // Trong thực tế nên mã hóa
-        phone,
-        address,
-      };
-
-      // Lưu vào danh sách
-      users.push(newUser);
-      await AsyncStorage.setItem('registered_users', JSON.stringify(users));
-
-      // Tự động đăng nhập
-      const loginUser = {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        phone: newUser.phone,
-        address: newUser.address,
-      };
-
-      setUser(loginUser);
+      setLoading(true);
+      // Gọi API đăng ký - lưu vào database
+      await register(email, password, name, phone);
 
       Alert.alert('Thành công!', `Chào mừng ${name}!`, [
         { text: 'OK', onPress: () => navigation.replace('Main') }
       ]);
-    } catch (e) {
-      Alert.alert('Lỗi', 'Không thể đăng ký. Vui lòng thử lại.');
+    } catch (error: any) {
+      // Error được handle trong register method
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -120,19 +92,28 @@ export default function RegisterScreen({ navigation }: any) {
       />
 
       <TextInput
-        placeholder="Địa chỉ nhận hàng"
+        placeholder="Địa chỉ nhận hàng (tùy chọn)"
         value={form.address}
         onChangeText={(text) => setForm({ ...form, address: text })}
         style={styles.input}
       />
 
-      <TouchableOpacity onPress={handleRegister} style={styles.registerBtn}>
-        <Text style={styles.registerBtnText}>Đăng Ký Ngay</Text>
+      <TouchableOpacity
+        onPress={handleRegister}
+        style={[styles.registerBtn, loading && { opacity: 0.6 }]}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.registerBtnText}>Đăng Ký Ngay</Text>
+        )}
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.loginLink}
         onPress={() => navigation.navigate('Login')}
+        disabled={loading}
       >
         <Text style={styles.loginText}>
           Đã có tài khoản? <Text style={styles.bold}>Đăng nhập</Text>
@@ -180,6 +161,7 @@ const styles = StyleSheet.create({
   loginLink: {
     marginTop: 24,
     alignItems: 'center',
+    marginBottom: 40,
   },
   loginText: {
     color: '#666',

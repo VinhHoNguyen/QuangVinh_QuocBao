@@ -44,10 +44,10 @@ export const register = async (
     });
 
     // Generate JWT token
-    const payload = { 
-      _id: newUser._id.toString(), 
-      email: newUser.email, 
-      role: newUser.role 
+    const payload = {
+      _id: newUser._id.toString(),
+      email: newUser.email,
+      role: newUser.role
     };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 
@@ -58,6 +58,7 @@ export const register = async (
         _id: newUser._id,
         email: newUser.email,
         name: newUser.name,
+        phone: newUser.phone,
         role: newUser.role,
         restaurantId: newUser.restaurantId,
         token,
@@ -92,10 +93,10 @@ export const login = async (
     }
 
     // Generate JWT token
-    const payload = { 
-      _id: user._id.toString(), 
-      email: user.email, 
-      role: user.role 
+    const payload = {
+      _id: user._id.toString(),
+      email: user.email,
+      role: user.role
     };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 
@@ -106,6 +107,7 @@ export const login = async (
         _id: user._id,
         email: user.email,
         name: user.name,
+        phone: user.phone,
         role: user.role,
         restaurantId: user.restaurantId,
         token,
