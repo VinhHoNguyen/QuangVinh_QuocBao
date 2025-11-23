@@ -26,27 +26,179 @@ Hệ thống giao đồ ăn bằng drone với React/Next.js frontend và Node.j
 - 📊 Dashboard tổng quan
 - 🗺️ Fleet map - theo dõi drone real-time
 
+## 🏗️ Kiến Trúc Hệ Thống
+
+### Component Diagram
+
+```mermaid
+graph TB
+    subgraph "User Interface Layer"
+        CW[Customer Web App<br/>Next.js]
+        RW[Restaurant Web App<br/>Next.js]
+        AW[Admin Web App<br/>Next.js]
+        MW[Mobile App<br/>React Native]
+    end
+
+    subgraph "API Gateway & Security"
+        API[API Server<br/>Express.js]
+        AUTH[Authentication<br/>JWT + Firebase Auth]
+    end
+
+    subgraph "Business Logic Layer"
+        AC[Auth Controller]
+        RC[Restaurant Controller]
+        PC[Product Controller]
+        OC[Order Controller]
+        DC[Drone Controller]
+        DLC[Delivery Controller]
+        ANC[Analytics Controller]
+    end
+
+    subgraph "Middleware"
+        AM[Auth Middleware]
+        EM[Error Handler]
+        VM[Validation Middleware]
+    end
+
+    subgraph "Data Layer"
+        subgraph "MongoDB Atlas"
+            UD[(User DB)]
+            RD[(Restaurant DB)]
+            PD[(Product DB)]
+            OD[(Order DB)]
+            DD[(Drone DB)]
+            DLD[(Delivery DB)]
+        end
+    end
+
+    subgraph "External Services"
+        FA[Firebase Auth]
+        FS[Firebase Storage]
+        MAP[Map Service<br/>Leaflet/Mapbox]
+    end
+
+    CW --> API
+    RW --> API
+    AW --> API
+    MW --> API
+
+    API --> AUTH
+    AUTH --> FA
+
+    API --> AM
+    AM --> AC
+    AM --> RC
+    AM --> PC
+    AM --> OC
+    AM --> DC
+    AM --> DLC
+    AM --> ANC
+
+    API --> EM
+    API --> VM
+
+    AC --> UD
+    RC --> RD
+    PC --> PD
+    OC --> OD
+    DC --> DD
+    DLC --> DLD
+
+    RC --> FS
+    PC --> FS
+
+    CW --> MAP
+    AW --> MAP
+
+    style API fill:#ff6b6b
+    style AUTH fill:#ff6b6b
+    style UD fill:#4ecdc4
+    style RD fill:#4ecdc4
+    style PD fill:#4ecdc4
+    style OD fill:#4ecdc4
+    style DD fill:#4ecdc4
+    style DLD fill:#4ecdc4
+    style FA fill:#ffe66d
+    style FS fill:#ffe66d
+    style MAP fill:#ffe66d
+```
+
+### Luồng Dữ Liệu Chính
+
+```mermaid
+sequenceDiagram
+    participant C as Customer App
+    participant R as Restaurant App
+    participant A as Admin App
+    participant API as API Server
+    participant Auth as Authentication
+    participant DB as MongoDB
+    participant FB as Firebase
+
+    Note over C,FB: 1. User Authentication Flow
+    C->>API: POST /api/auth/login
+    API->>Auth: Verify credentials
+    Auth->>DB: Check user data
+    DB-->>Auth: User info
+    Auth->>FB: Validate with Firebase
+    FB-->>Auth: Token
+    Auth-->>API: JWT Token
+    API-->>C: Login success + Token
+
+    Note over C,FB: 2. Order Creation Flow
+    C->>API: POST /api/orders (with JWT)
+    API->>Auth: Verify token
+    Auth-->>API: User verified
+    API->>DB: Create order
+    DB-->>API: Order created
+    API->>DB: Find available drone
+    DB-->>API: Drone assigned
+    API->>DB: Create delivery
+    DB-->>API: Delivery created
+    API-->>C: Order confirmation
+
+    Note over C,FB: 3. Restaurant Management Flow
+    R->>API: PUT /api/products/:id (with JWT)
+    API->>Auth: Verify restaurant owner
+    Auth-->>API: Owner verified
+    API->>FB: Upload image (if any)
+    FB-->>API: Image URL
+    API->>DB: Update product
+    DB-->>API: Product updated
+    API-->>R: Update success
+
+    Note over C,FB: 4. Admin Monitoring Flow
+    A->>API: GET /api/analytics/restaurant/:id
+    API->>Auth: Verify admin role
+    Auth-->>API: Admin verified
+    API->>DB: Calculate statistics
+    DB-->>API: Analytics data
+    API-->>A: Statistics response
+```
+
 ## 🛠️ Công Nghệ Sử Dụng
 
 ### Backend
 - **Runtime:** Node.js 18+
 - **Framework:** Express.js
 - **Language:** TypeScript
-- **Database:** Firebase Firestore (NoSQL)
-- **Authentication:** Firebase Auth + JWT
+- **Database:** MongoDB Atlas (NoSQL)
+- **Authentication:** JWT + Firebase Auth
 - **Validation:** Custom middleware
+- **Image Storage:** Firebase Storage
 
 ### Frontend
-- **Framework:** Next.js 14 (React 19)
+- **Framework:** Next.js 16 (React 19)
 - **Language:** TypeScript
 - **Styling:** TailwindCSS
 - **UI Components:** shadcn/ui
 - **State Management:** React Context API
-- **Maps:** Leaflet / Mapbox
+- **Maps:** Leaflet 1.9.4
+- **Charts:** Recharts
 
 ### DevOps
 - **Version Control:** Git
-- **Package Manager:** npm
+- **Package Manager:** npm/pnpm
 - **Process Manager:** nodemon (development)
 
 ## 🚀 Khởi Động Nhanh
