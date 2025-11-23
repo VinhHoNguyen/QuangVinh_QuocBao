@@ -41,33 +41,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       console.log('[Restaurant Auth] Login response:', response);
 
-      // Extract token and user data from response.data
-      const authToken = response.data?.token;
-      const userData = response.data;
+      // Response is already the AuthResponse object (flat structure)
+      const authToken = response.token;
 
       if (!authToken) {
         throw new Error('Không nhận được token từ server. Vui lòng thử lại.');
       }
 
       // Check if user is restaurant_owner role
-      if (userData.role !== 'restaurant_owner') {
+      if (response.role !== 'restaurant_owner') {
         throw new Error('Tài khoản này không phải là tài khoản nhà hàng. Vui lòng sử dụng tài khoản nhà hàng để đăng nhập.');
       }
 
-      // Get restaurantId - should be in userData
-      const restId = userData.restaurantId;
+      // Get restaurantId - should be in response
+      const restId = response.restaurantId;
       if (!restId) {
         throw new Error('Không tìm thấy thông tin nhà hàng cho tài khoản này. Vui lòng liên hệ admin.');
       }
 
       // Save to state
       setToken(authToken);
-      setUser(userData);
+      setUser(response);
       setRestaurantId(restId);
 
       // Save to localStorage
       localStorage.setItem('restaurant_token', authToken);
-      localStorage.setItem('restaurant_user', JSON.stringify(userData));
+      localStorage.setItem('restaurant_user', JSON.stringify(response));
       localStorage.setItem('restaurant_id', restId);
 
       console.log('[Restaurant Auth] Login successful, restaurant ID:', restId);

@@ -19,7 +19,6 @@ import {
 import { useState, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { adminDashboardAPI, adminOrdersAPI, adminRestaurantsAPI, adminDronesAPI } from "@/lib/admin-api"
-import { useAdminWebSocket } from "@/lib/admin-websocket"
 import { toast } from "sonner"
 
 const DroneMap = dynamic(() => import("@/components/drone-map").then(mod => mod.default), { ssr: false })
@@ -96,28 +95,10 @@ export default function AdminDashboard() {
   const [timePeriod, setTimePeriod] = useState<"day" | "week" | "month">("week")
   const [loading, setLoading] = useState(true)
   const [dashboardStats, setDashboardStats] = useState<any>(null)
-  const { isConnected } = useAdminWebSocket()
 
   // Load dashboard stats
   useEffect(() => {
     loadDashboardData()
-  }, [])
-
-  // Listen for real-time updates
-  useEffect(() => {
-    const handleRefresh = () => {
-      loadDashboardData()
-    }
-
-    window.addEventListener('admin:order:refresh', handleRefresh)
-    window.addEventListener('admin:restaurant:refresh', handleRefresh)
-    window.addEventListener('admin:drone:refresh', handleRefresh)
-
-    return () => {
-      window.removeEventListener('admin:order:refresh', handleRefresh)
-      window.removeEventListener('admin:restaurant:refresh', handleRefresh)
-      window.removeEventListener('admin:drone:refresh', handleRefresh)
-    }
   }, [])
 
   const loadDashboardData = async () => {
@@ -160,7 +141,7 @@ export default function AdminDashboard() {
     {
       label: "Đang xử lý",
       value: dashboardStats.activeOrders.toString(),
-      change: isConnected ? "Live ⚡" : "Offline",
+      change: "Đang hoạt động",
       icon: "🚁",
     },
     {

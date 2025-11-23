@@ -48,7 +48,8 @@ export interface Order {
   restaurantId: string;
   items: OrderItem[];
   totalAmount: number;
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivering' | 'delivered' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivering' | 'delivered' | 'completed' | 'cancelled';
+  deliveryMethod: 'drone' | 'bike' | 'car';
   paymentMethod: 'cash' | 'credit_card' | 'debit_card' | 'e_wallet' | 'bank_transfer';
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
   shippingAddress: {
@@ -72,8 +73,8 @@ export interface Order {
 // Auth API
 export const authAPI = {
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>('/auth/login', credentials);
-    return response.data;
+    const response = await api.post<{ success: boolean; data: AuthResponse }>('/auth/login', credentials);
+    return response.data.data; // Extract data from { success, data: { token, ... } }
   },
 
   me: async (): Promise<AuthResponse> => {

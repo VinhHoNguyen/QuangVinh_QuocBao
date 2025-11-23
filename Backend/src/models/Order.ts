@@ -7,6 +7,7 @@ export enum OrderStatus {
   READY = 'ready',
   DELIVERING = 'delivering',
   DELIVERED = 'delivered',
+  COMPLETED = 'completed',
   CANCELLED = 'cancelled',
 }
 
@@ -50,6 +51,7 @@ export interface IOrder extends Document {
   items: IOrderItem[];
   totalPrice: number;
   status: OrderStatus;
+  deliveryMethod: 'drone' | 'bike' | 'car'; // Transport method
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   shippingAddress: IShippingAddress;
@@ -82,6 +84,7 @@ const orderSchema = new Schema<IOrder>({
   items: { type: [orderItemSchema], required: true },
   totalPrice: { type: Number, required: true },
   status: { type: String, enum: Object.values(OrderStatus), default: OrderStatus.PENDING },
+  deliveryMethod: { type: String, enum: ['drone', 'bike', 'car'], default: 'drone' },
   paymentMethod: { type: String, enum: Object.values(PaymentMethod), required: true },
   paymentStatus: { type: String, enum: Object.values(PaymentStatus), default: PaymentStatus.PENDING },
   shippingAddress: { type: shippingAddressSchema, required: true },

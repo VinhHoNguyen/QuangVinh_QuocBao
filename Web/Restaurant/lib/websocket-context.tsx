@@ -16,7 +16,7 @@ const WebSocketContext = createContext<WebSocketContextType>({
 
 export const useWebSocket = () => useContext(WebSocketContext)
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+const SOCKET_URL = 'http://localhost:5000'
 
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null)
@@ -24,25 +24,30 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const { token, restaurantId } = useAuth()
 
   useEffect(() => {
-    // Only connect if we have a token and restaurantId
-    if (!token || !restaurantId) {
-      console.log('[Restaurant WebSocket] No token or restaurantId, skipping connection', { token: !!token, restaurantId })
+    // Only connect if we have restaurantId (token is optional for now)
+    if (!restaurantId) {
+      console.log('[Restaurant WebSocket] No restaurantId, skipping connection')
       return
     }
 
     console.log('[Restaurant WebSocket] Connecting to:', SOCKET_URL)
-    console.log('[Restaurant WebSocket] Auth data:', { hasToken: !!token, restaurantId })
+    console.log('[Restaurant WebSocket] Auth data:', { 
+      hasToken: !!token, 
+      tokenPreview: token ? token.substring(0, 20) + '...' : 'none',
+      restaurantId 
+    })
 
     // Create socket connection with auth
     const newSocket = io(SOCKET_URL, {
       auth: {
-        token,
+        token: token || '',
         restaurantId,
       },
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'], // Try polling first
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
+      timeout: 10000,
     })
 
     newSocket.on('connect', () => {
