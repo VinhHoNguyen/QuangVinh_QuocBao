@@ -142,11 +142,40 @@ export const getAllOrders = async (
       filter.restaurantId = restaurantId;
     }
 
-    const orders = await OrderModel.find(filter).sort({ createdAt: -1 });
+    const orders = await OrderModel.find(filter)
+      .sort({ createdAt: -1 });
+
+    // Transform orders to ensure productName is available
+    const transformedOrders = await Promise.all(orders.map(async (order) => {
+      const orderObj = order.toObject();
+      
+      orderObj.items = await Promise.all(orderObj.items.map(async (item: any) => {
+        if (!item.productName && item.productId) {
+          try {
+            const product = await ProductModel.findById(item.productId).select('name');
+            return {
+              ...item,
+              productName: product?.name || 'Sản phẩm không xác định'
+            };
+          } catch (err) {
+            return {
+              ...item,
+              productName: 'Sản phẩm không xác định'
+            };
+          }
+        }
+        return {
+          ...item,
+          productName: item.productName || 'Sản phẩm không xác định'
+        };
+      }));
+      
+      return orderObj;
+    }));
 
     res.status(200).json({
       success: true,
-      data: orders,
+      data: transformedOrders,
     });
   } catch (error) {
     next(error);
@@ -188,11 +217,40 @@ export const getUserOrders = async (
       throw new AppError(ERROR_MESSAGES.UNAUTHORIZED, 401);
     }
 
-    const orders = await OrderModel.find({ userId: req.user._id }).sort({ createdAt: -1 });
+    const orders = await OrderModel.find({ userId: req.user._id })
+      .sort({ createdAt: -1 });
+
+    // Transform orders to ensure productName is available
+    const transformedOrders = await Promise.all(orders.map(async (order) => {
+      const orderObj = order.toObject();
+      
+      orderObj.items = await Promise.all(orderObj.items.map(async (item: any) => {
+        if (!item.productName && item.productId) {
+          try {
+            const product = await ProductModel.findById(item.productId).select('name');
+            return {
+              ...item,
+              productName: product?.name || 'Sản phẩm không xác định'
+            };
+          } catch (err) {
+            return {
+              ...item,
+              productName: 'Sản phẩm không xác định'
+            };
+          }
+        }
+        return {
+          ...item,
+          productName: item.productName || 'Sản phẩm không xác định'
+        };
+      }));
+      
+      return orderObj;
+    }));
 
     res.status(200).json({
       success: true,
-      data: orders,
+      data: transformedOrders,
     });
   } catch (error) {
     next(error);
@@ -281,11 +339,41 @@ export const getRestaurantOrders = async (
   try {
     const { id } = req.params; // restaurantId
 
-    const orders = await OrderModel.find({ restaurantId: id }).sort({ createdAt: -1 });
+    const orders = await OrderModel.find({ restaurantId: id })
+      .sort({ createdAt: -1 });
+
+    // Transform orders to ensure productName is available
+    const transformedOrders = await Promise.all(orders.map(async (order) => {
+      const orderObj = order.toObject();
+      
+      // For each item, if productName is missing, fetch it from Product collection
+      orderObj.items = await Promise.all(orderObj.items.map(async (item: any) => {
+        if (!item.productName && item.productId) {
+          try {
+            const product = await ProductModel.findById(item.productId).select('name');
+            return {
+              ...item,
+              productName: product?.name || 'Sản phẩm không xác định'
+            };
+          } catch (err) {
+            return {
+              ...item,
+              productName: 'Sản phẩm không xác định'
+            };
+          }
+        }
+        return {
+          ...item,
+          productName: item.productName || 'Sản phẩm không xác định'
+        };
+      }));
+      
+      return orderObj;
+    }));
 
     res.status(200).json({
       success: true,
-      data: orders,
+      data: transformedOrders,
     });
   } catch (error) {
     next(error);

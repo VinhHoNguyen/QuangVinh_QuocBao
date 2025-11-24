@@ -161,7 +161,7 @@ export function OrderPage() {
   }
 
   const handlePrint = (order: Order) => {
-    const itemsList = order.items.map(item => `${item.productName} x${item.quantity} - ${item.price.toLocaleString("vi-VN")}đ`).join('\n')
+    const itemsList = order.items.map(item => `${item.productName || 'Món ăn'} x${item.quantity} - ${item.price.toLocaleString("vi-VN")}đ`).join('\n')
     const printContent = `
       PHIẾU BẾP
       ========================
@@ -296,7 +296,7 @@ export function OrderPage() {
             orders
               .filter((order) => order.status === "pending")
               .map((order) => {
-                const itemsList = order.items.map(item => `${item.productName} x${item.quantity}`).join(", ")
+                const itemsList = order.items.map(item => `${item.productName || 'Món ăn'} x${item.quantity}`).join(", ")
                 return (
                   <Card key={order._id} className="border-border hover:shadow-lg transition-shadow">
                     <CardContent className="pt-6">
@@ -399,7 +399,7 @@ export function OrderPage() {
             orders
               .filter((order) => ["confirmed", "preparing"].includes(order.status))
               .map((order) => {
-                const itemsList = order.items.map(item => `${item.productName} x${item.quantity}`).join(", ")
+                const itemsList = order.items.map(item => `${item.productName || 'Món ăn'} x${item.quantity}`).join(", ")
                 return (
                   <Card key={order._id} className="border-border hover:shadow-lg transition-shadow">
                     <CardContent className="pt-6">
@@ -472,7 +472,7 @@ export function OrderPage() {
             orders
               .filter((order) => ["ready", "delivering"].includes(order.status))
               .map((order) => {
-                const itemsList = order.items.map(item => `${item.productName} x${item.quantity}`).join(", ")
+                const itemsList = order.items.map(item => `${item.productName || 'Món ăn'} x${item.quantity}`).join(", ")
                 return (
                   <Card key={order._id} className="border-border hover:shadow-lg transition-shadow">
                     <CardContent className="pt-6">
@@ -545,7 +545,7 @@ export function OrderPage() {
             orders
               .filter((order) => ["delivered", "cancelled"].includes(order.status))
               .map((order) => {
-                const itemsList = order.items.map(item => `${item.productName} x${item.quantity}`).join(", ")
+                const itemsList = order.items.map(item => `${item.productName || 'Món ăn'} x${item.quantity}`).join(", ")
                 return (
                   <Card key={order._id} className="border-border opacity-75">
                     <CardHeader className="border-b">
@@ -623,7 +623,7 @@ export function OrderPage() {
               <p className="text-sm font-semibold text-muted-foreground">Món ăn</p>
               {selectedOrder.items.map((item, idx) => (
                 <p key={idx} className="text-foreground">
-                  {item.productName} x{item.quantity} - {item.price.toLocaleString("vi-VN")}đ
+                  {item.productName || 'Món ăn'} x{item.quantity} - {item.price.toLocaleString("vi-VN")}đ
                 </p>
               ))}
             </div>

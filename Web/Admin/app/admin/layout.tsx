@@ -7,6 +7,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Menu, X, LogOut, Users, Store, Package, CreditCard, BarChart2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useAdminAuth } from "@/lib/admin-auth-context"
 
 export default function AdminLayout({
   children,
@@ -14,25 +15,16 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const { user, isAuthenticated, isLoading, logout } = useAdminAuth()
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
-    const authData = localStorage.getItem("adminAuth")
-    if (authData) {
-      try {
-        const { authenticated } = JSON.parse(authData)
-        setIsAuthenticated(authenticated)
-      } catch {
-        router.push("/login")
-      }
-    } else {
+    // Redirect to login if not authenticated after loading
+    if (!isLoading && !isAuthenticated) {
       router.push("/login")
     }
-    setLoading(false)
-  }, [router])
+  }, [isLoading, isAuthenticated, router])
 
   const menuItems = [
     { href: "/admin/users", label: "Quản lý người dùng", icon: Users },
@@ -43,12 +35,7 @@ export default function AdminLayout({
     { href: "/admin/reports", label: "Báo cáo & thống kê", icon: BarChart2 },
   ]
 
-  const handleLogout = () => {
-    localStorage.removeItem("adminAuth")
-    router.push("/login")
-  }
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -117,7 +104,7 @@ export default function AdminLayout({
           <Button
             variant="outline"
             size="sm"
-            onClick={handleLogout}
+            onClick={logout}
             className="gap-2 bg-transparent hover:bg-muted text-foreground"
           >
             <LogOut size={18} />
