@@ -16,12 +16,7 @@ import {
   AreaChart,
   Area,
 } from "recharts"
-import { useState, useEffect } from "react"
-import dynamic from "next/dynamic"
-import { adminDashboardAPI, adminOrdersAPI, adminRestaurantsAPI, adminDronesAPI } from "@/lib/admin-api"
-import { toast } from "sonner"
-
-const DroneMap = dynamic(() => import("@/components/drone-map").then(mod => mod.default), { ssr: false })
+import { useState } from "react"
 
 const weeklyData = [
   { name: "T2", orders: 240, revenue: 2400, completed: 200, cancelled: 8 },
@@ -93,79 +88,42 @@ const dronePerformance = [
 
 export default function AdminDashboard() {
   const [timePeriod, setTimePeriod] = useState<"day" | "week" | "month">("week")
-  const [loading, setLoading] = useState(true)
-  const [dashboardStats, setDashboardStats] = useState<any>(null)
-
-  // Load dashboard stats
-  useEffect(() => {
-    loadDashboardData()
-  }, [])
-
-  const loadDashboardData = async () => {
-    try {
-      setLoading(true)
-      const stats = await adminDashboardAPI.getStats()
-      setDashboardStats(stats)
-    } catch (error: any) {
-      console.error('Error loading dashboard:', error)
-      toast.error('Không thể tải dữ liệu dashboard')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading || !dashboardStats) {
-    return (
-      <div className="p-6 flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Đang tải dữ liệu...</p>
-        </div>
-      </div>
-    )
-  }
-
-  const completionRate = dashboardStats.totalOrders > 0 
-    ? ((dashboardStats.completedOrders / dashboardStats.totalOrders) * 100).toFixed(1)
-    : '0.0'
-
-  const totalDrones = dashboardStats.activeDrones + 10 // Estimate inactive drones
 
   const stats = [
     {
       label: "Tổng đơn hàng",
-      value: dashboardStats.totalOrders.toString(),
+      value: "156",
       change: "Tất cả",
       icon: "📦",
     },
     {
       label: "Đang xử lý",
-      value: dashboardStats.activeOrders.toString(),
+      value: "23",
       change: "Đang hoạt động",
       icon: "🚁",
     },
     {
       label: "Tỷ lệ hoàn thành",
-      value: `${completionRate}%`,
-      change: `${dashboardStats.completedOrders}/${dashboardStats.totalOrders}`,
+      value: `95.2%`,
+      change: `148/156`,
       icon: "✅",
     },
     {
       label: "Tổng doanh thu",
-      value: `${(dashboardStats.totalRevenue / 1000).toFixed(1)}K đ`,
+      value: "45.2M đ",
       change: "Đã giao",
       icon: "💰",
     },
     {
       label: "Nhà hàng",
-      value: dashboardStats.totalRestaurants.toString(),
+      value: "42",
       change: "Hoạt động",
       icon: "🏪",
     },
     {
       label: "Drone hoạt động",
-      value: `${dashboardStats.activeDrones}/${totalDrones}`,
-      change: `${Math.round((dashboardStats.activeDrones / totalDrones) * 100)}%`,
+      value: "38/55",
+      change: "69%",
       icon: "⚡",
     },
   ]

@@ -1,12 +1,42 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, Edit2, Eye, Check, X, AlertCircle, Pause } from 'lucide-react'
+import { Eye, Check, X, Pause, Play, Loader2, RefreshCw } from 'lucide-react'
 
-const initialRestaurants = [
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
+
+interface Restaurant {
+  _id: string
+  name: string
+  phone: string
+  address: string
+  image: string
+  minOrder: number
+  maxOrder: number
+  rating: number
+  status: string
+  ownerId: {
+    _id: string
+    name: string
+    email: string
+  }
+  createdAt: string
+  updatedAt: string
+}
+
+const TABS = ["Tất cả", "Chờ duyệt", "Hoạt động", "Tạm ngưng"]
+
+const statusMapping: { [key: string]: string } = {
+  pending: "Chờ duyệt",
+  active: "Hoạt động",
+  inactive: "Không hoạt động",
+  suspended: "Tạm ngưng",
+}
+
+const OLD_initialRestaurants = [
   {
     id: 1,
     name: "KFC Hà Nội",
@@ -76,63 +106,198 @@ const initialRestaurants = [
   },
 ]
 
-const TABS = ["Tất cả", "Chờ duyệt", "Hoạt động", "Vi phạm", "Tạm ngưng"]
-
 export default function RestaurantsPage() {
-  const [restaurants, setRestaurants] = useState(initialRestaurants)
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [activeTab, setActiveTab] = useState("Tất cả")
-  const [selectedRestaurant, setSelectedRestaurant] = useState<(typeof restaurants)[0] | null>(null)
+  const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null)
   const [showDetails, setShowDetails] = useState(false)
-  const [editingRestaurant, setEditingRestaurant] = useState<(typeof restaurants)[0] | null>(null)
-  const [showEditModal, setShowEditModal] = useState(false)
+
+  useEffect(() => {
+    loadRestaurants()
+  }, [])
+
+  const loadRestaurants = async () => {
+    try {
+      const token = localStorage.getItem("admin_token") || localStorage.getItem("token")
+      if (!token) {
+        console.error("❌ No token found")
+        alert("Bạn chưa đăng nhập. Đang chuyển đến trang đăng nhập...")
+        window.location.href = "/login"
+        return
+      }
+
+      console.log("Fetching restaurants from:", `${API_URL}/restaurants`)
+      const response = await fetch(`${API_URL}/restaurants`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      console.log("Response status:", response.status)
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log("Restaurants data:", data)
+        if (data.success && data.data) {
+          setRestaurants(data.data)
+          console.log(`✅ Loaded ${data.data.length} restaurants successfully`)
+        } else {
+          console.error("Invalid data format:", data)
+          alert("Lỗi định dạng dữ liệu")
+        }
+      } else if (response.status === 401) {
+        alert("Token hết hạn. Vui lòng đăng nhập lại")
+        localStorage.removeItem("admin_token")
+        localStorage.removeItem("token")
+        localStorage.removeItem("admin_user")
+        window.location.href = "/login"
+      } else {
+        const error = await response.json()
+        console.error("Error response:", error)
+        alert(error.message || "Không thể tải danh sách nhà hàng")
+      }
+    } catch (error) {
+      console.error("Error loading restaurants:", error)
+      alert("Lỗi kết nối đến server. Vui lòng kiểm tra xem backend có đang chạy không.")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredRestaurants = restaurants.filter((r) => {
-    const matchesSearch = r.name.toLowerCase().includes(search.toLowerCase())
+    const matchesSearch =
+      r.name.toLowerCase().includes(search.toLowerCase()) ||
+      r.address.toLowerCase().includes(search.toLowerCase())
     const matchesTab =
       activeTab === "Tất cả" ||
-      (activeTab === "Chờ duyệt" && r.verificationStatus === "Chờ duyệt") ||
-      (activeTab === "Hoạt động" && r.status === "Hoạt động") ||
-      (activeTab === "Vi phạm" && r.violations > 0) ||
-      (activeTab === "Tạm ngưng" && r.status === "Tạm ngưng")
+      (activeTab === "Chờ duyệt" && r.status === "pending") ||
+      (activeTab === "Hoạt động" && r.status === "active") ||
+      (activeTab === "Tạm ngưng" && r.status === "suspended")
     return matchesSearch && matchesTab
   })
 
-  const handleApprove = (id: number) => {
-    setRestaurants(
-      restaurants.map((r) => (r.id === id ? { ...r, status: "Hoạt động", verificationStatus: "Đã xác minh" } : r)),
+  if (loading) {
+    return (
+      <div className="flex flex-col justify-center items-center h-64 space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-muted-foreground">Đang tải danh sách nhà hàng...</p>
+      </div>
     )
   }
 
-  const handleReject = (id: number) => {
-    setRestaurants(restaurants.filter((r) => r.id !== id))
-  }
+  const handleApprove = async (id: string) => {
+    if (!confirm("Bạn có chắc chắn muốn duyệt nhà hàng này?")) {
+      return
+    }
 
-  const handleSuspend = (id: number) => {
-    setRestaurants(restaurants.map((r) => (r.id === id ? { ...r, status: "Tạm ngưng" } : r)))
-  }
+    try {
+      const token = localStorage.getItem("admin_token") || localStorage.getItem("token")
+      const response = await fetch(`${API_URL}/restaurants/${id}/approve`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
 
-  const handleResume = (id: number) => {
-    setRestaurants(restaurants.map((r) => (r.id === id ? { ...r, status: "Hoạt động" } : r)))
-  }
-
-  const handleEditRestaurant = (field: string, value: any) => {
-    if (editingRestaurant) {
-      setEditingRestaurant({ ...editingRestaurant, [field]: value })
+      if (response.ok) {
+        await loadRestaurants()
+        alert("Đã duyệt nhà hàng thành công!")
+      } else {
+        const error = await response.json()
+        alert(error.message || "Có lỗi xảy ra")
+      }
+    } catch (error) {
+      console.error("Error approving restaurant:", error)
+      alert("Có lỗi xảy ra khi duyệt nhà hàng")
     }
   }
 
-  const handleSaveEdit = () => {
-    if (editingRestaurant) {
-      setRestaurants(restaurants.map((r) => (r.id === editingRestaurant.id ? editingRestaurant : r)))
-      setShowEditModal(false)
-      setEditingRestaurant(null)
+  const handleReject = async (id: string) => {
+    const reason = prompt("Nhập lý do từ chối (không bắt buộc):")
+    if (reason === null) return
+
+    try {
+      const token = localStorage.getItem("admin_token") || localStorage.getItem("token")
+      const response = await fetch(`${API_URL}/restaurants/${id}/reject`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reason }),
+      })
+
+      if (response.ok) {
+        await loadRestaurants()
+        alert("Đã từ chối nhà hàng")
+      } else {
+        const error = await response.json()
+        alert(error.message || "Có lỗi xảy ra")
+      }
+    } catch (error) {
+      console.error("Error rejecting restaurant:", error)
+      alert("Có lỗi xảy ra khi từ chối nhà hàng")
     }
   }
 
-  const openEditModal = (restaurant: typeof restaurants[0]) => {
-    setEditingRestaurant({ ...restaurant })
-    setShowEditModal(true)
+  const handleSuspend = async (id: string) => {
+    if (!confirm("Bạn có chắc chắn muốn tạm ngưng nhà hàng này?")) {
+      return
+    }
+
+    try {
+      const token = localStorage.getItem("admin_token") || localStorage.getItem("token")
+      const response = await fetch(`${API_URL}/restaurants/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "suspended" }),
+      })
+
+      if (response.ok) {
+        await loadRestaurants()
+        alert("Đã tạm ngưng nhà hàng")
+      } else {
+        const error = await response.json()
+        alert(error.message || "Có lỗi xảy ra")
+      }
+    } catch (error) {
+      console.error("Error suspending restaurant:", error)
+      alert("Có lỗi xảy ra")
+    }
+  }
+
+  const handleResume = async (id: string) => {
+    if (!confirm("Bạn có chắc chắn muốn kích hoạt lại nhà hàng này?")) {
+      return
+    }
+
+    try {
+      const token = localStorage.getItem("admin_token") || localStorage.getItem("token")
+      const response = await fetch(`${API_URL}/restaurants/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "active" }),
+      })
+
+      if (response.ok) {
+        await loadRestaurants()
+        alert("Đã kích hoạt lại nhà hàng")
+      } else {
+        const error = await response.json()
+        alert(error.message || "Có lỗi xảy ra")
+      }
+    } catch (error) {
+      console.error("Error resuming restaurant:", error)
+      alert("Có lỗi xảy ra")
+    }
   }
 
   return (
@@ -140,9 +305,21 @@ export default function RestaurantsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Quản lý nhà hàng</h1>
-          <p className="text-muted-foreground mt-1">Duyệt, quản lý menu, giám sát doanh thu và xử lý vi phạm</p>
+          <p className="text-muted-foreground mt-1">
+            Duyệt, quản lý và giám sát nhà hàng ({restaurants.length} nhà hàng)
+          </p>
         </div>
-        
+        <Button 
+          onClick={() => {
+            setLoading(true)
+            loadRestaurants()
+          }} 
+          variant="outline" 
+          className="gap-2"
+        >
+          <RefreshCw size={18} />
+          Làm mới
+        </Button>
       </div>
 
       {/* Search */}
@@ -174,328 +351,237 @@ export default function RestaurantsPage() {
 
       {/* Restaurants List */}
       <div className="space-y-4">
-        {filteredRestaurants.map((restaurant) => (
-          <Card key={restaurant.id} className="p-6 hover:shadow-lg transition-shadow">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Left Column - Basic Info */}
-              <div>
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-xl font-bold text-foreground">{restaurant.name}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">{restaurant.address}</p>
-                  </div>
-                  <div className="flex gap-2">
+        {filteredRestaurants.length === 0 ? (
+          <Card className="p-12 text-center text-muted-foreground">
+            {restaurants.length === 0 ? (
+              <div className="space-y-2">
+                <p className="text-lg">Chưa có nhà hàng nào trong hệ thống</p>
+              </div>
+            ) : (
+              <p>Không tìm thấy nhà hàng phù hợp với bộ lọc</p>
+            )}
+          </Card>
+        ) : (
+          filteredRestaurants.map((restaurant) => (
+            <Card key={restaurant._id} className="p-6 hover:shadow-lg transition-shadow">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left Column - Basic Info */}
+                <div>
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-foreground">{restaurant.name}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">{restaurant.address}</p>
+                    </div>
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        restaurant.status === "Hoạt động"
+                        restaurant.status === "active"
                           ? "bg-green-100 text-green-700"
-                          : restaurant.status === "Chờ xác minh"
+                          : restaurant.status === "pending"
                             ? "bg-yellow-100 text-yellow-700"
-                            : restaurant.status === "Tạm ngưng"
+                            : restaurant.status === "suspended"
                               ? "bg-red-100 text-red-700"
                               : "bg-gray-100 text-gray-700"
                       }`}
                     >
-                      {restaurant.status}
+                      {statusMapping[restaurant.status] || restaurant.status}
                     </span>
-                    {restaurant.violations > 0 && (
-                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 flex items-center gap-1">
-                        <AlertCircle size={12} />
-                        {restaurant.violations} vi phạm
-                      </span>
-                    )}
+                  </div>
+
+                  <div className="space-y-2 text-sm">
+                    <p className="text-muted-foreground">
+                      <span className="font-semibold text-foreground">Chủ sở hữu:</span>{" "}
+                      {restaurant.ownerId?.name || "N/A"}
+                    </p>
+                    <p className="text-muted-foreground">
+                      <span className="font-semibold text-foreground">Email:</span>{" "}
+                      {restaurant.ownerId?.email || "N/A"}
+                    </p>
+                    <p className="text-muted-foreground">
+                      <span className="font-semibold text-foreground">Điện thoại:</span> {restaurant.phone}
+                    </p>
+                    <p className="text-muted-foreground">
+                      <span className="font-semibold text-foreground">Đơn hàng tối thiểu:</span>{" "}
+                      {restaurant.minOrder.toLocaleString()}đ
+                    </p>
+                    <p className="text-muted-foreground">
+                      <span className="font-semibold text-foreground">Ngày đăng ký:</span>{" "}
+                      {new Date(restaurant.createdAt).toLocaleDateString("vi-VN")}
+                    </p>
                   </div>
                 </div>
 
-                <div className="space-y-2 text-sm">
-                  <p className="text-muted-foreground">
-                    <span className="font-semibold text-foreground">Email:</span> {restaurant.email}
-                  </p>
-                  <p className="text-muted-foreground">
-                    <span className="font-semibold text-foreground">Điện thoại:</span> {restaurant.contact}
-                  </p>
-                  <p className="text-muted-foreground">
-                    <span className="font-semibold text-foreground">Xác minh:</span> {restaurant.verificationStatus}
-                  </p>
+                {/* Right Column - Actions */}
+                <div className="flex flex-col justify-between">
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="bg-muted/50 rounded-lg p-4">
+                      <p className="text-xs text-muted-foreground mb-1">Đánh giá</p>
+                      <p className="text-lg font-bold text-foreground">
+                        {restaurant.rating > 0 ? `${restaurant.rating}/5` : "Chưa có"}
+                      </p>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-4">
+                      <p className="text-xs text-muted-foreground mb-1">Đơn tối đa</p>
+                      <p className="text-lg font-bold text-foreground">
+                        {restaurant.maxOrder.toLocaleString()}đ
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1"
+                      onClick={() => {
+                        setSelectedRestaurant(restaurant)
+                        setShowDetails(true)
+                      }}
+                    >
+                      <Eye size={16} />
+                      Chi tiết
+                    </Button>
+
+                    {restaurant.status === "pending" && (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => handleApprove(restaurant._id)}
+                          className="gap-1 bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <Check size={16} />
+                          Duyệt
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleReject(restaurant._id)}
+                          variant="outline"
+                          className="gap-1 bg-red-50 text-red-600 hover:bg-red-100"
+                        >
+                          <X size={16} />
+                          Từ chối
+                        </Button>
+                      </>
+                    )}
+
+                    {restaurant.status === "active" && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleSuspend(restaurant._id)}
+                        variant="outline"
+                        className="gap-1 bg-orange-50 text-orange-600 hover:bg-orange-100"
+                      >
+                        <Pause size={16} />
+                        Tạm ngưng
+                      </Button>
+                    )}
+
+                    {restaurant.status === "suspended" && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleResume(restaurant._id)}
+                        className="gap-1 bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        <Play size={16} />
+                        Kích hoạt
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
-
-              {/* Right Column - Metrics */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-muted/50 rounded-lg p-4">
-                  <p className="text-xs text-muted-foreground mb-1">Doanh thu (tháng)</p>
-                  <p className="text-lg font-bold text-foreground">
-                    {restaurant.revenue > 0 ? `${(restaurant.revenue / 1000000).toFixed(1)}M` : "N/A"}
-                  </p>
-                </div>
-                <div className="bg-muted/50 rounded-lg p-4">
-                  <p className="text-xs text-muted-foreground mb-1">Tỉ lệ huỷ</p>
-                  <p className="text-lg font-bold text-foreground">
-                    {restaurant.cancelRate > 0 ? `${restaurant.cancelRate}%` : "N/A"}
-                  </p>
-                </div>
-                <div className="bg-muted/50 rounded-lg p-4">
-                  <p className="text-xs text-muted-foreground mb-1">Đánh giá</p>
-                  <p className="text-lg font-bold text-foreground">
-                    {restaurant.rating > 0 ? `${restaurant.rating}/5` : "N/A"}
-                  </p>
-                  {restaurant.reviewCount > 0 && (
-                    <p className="text-xs text-muted-foreground">({restaurant.reviewCount} review)</p>
-                  )}
-                </div>
-                <div className="bg-muted/50 rounded-lg p-4">
-                  <p className="text-xs text-muted-foreground mb-1">Menu</p>
-                  <p className="text-lg font-bold text-foreground">
-                    {restaurant.menu.items > 0 ? `${restaurant.menu.items} món` : "N/A"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex flex-wrap gap-2 pt-6 border-t border-border">
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1 bg-transparent"
-                onClick={() => {
-                  setSelectedRestaurant(restaurant)
-                  setShowDetails(true)
-                }}
-              >
-                <Eye size={16} />
-                Chi tiết
-              </Button>
-
-              {restaurant.verificationStatus === "Chờ duyệt" && (
-                <>
-                  <Button
-                    size="sm"
-                    className="gap-1 bg-green-600 hover:bg-green-700 text-white"
-                    onClick={() => handleApprove(restaurant.id)}
-                  >
-                    <Check size={16} />
-                    Phê duyệt
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="gap-1 bg-red-600 hover:bg-red-700 text-white"
-                    onClick={() => handleReject(restaurant.id)}
-                  >
-                    <X size={16} />
-                    Từ chối
-                  </Button>
-                </>
-              )}
-
-              {restaurant.status === "Hoạt động" && (
-                <Button
-                  size="sm"
-                  className="gap-1 bg-orange-600 hover:bg-orange-700 text-white"
-                  onClick={() => handleSuspend(restaurant.id)}
-                >
-                  <Pause size={16} />
-                  Tạm ngưng
-                </Button>
-              )}
-
-              {restaurant.status === "Tạm ngưng" && (
-                <Button
-                  size="sm"
-                  className="gap-1 bg-green-600 hover:bg-green-700 text-white"
-                  onClick={() => handleResume(restaurant.id)}
-                >
-                  <Check size={16} />
-                  Hoạt động lại
-                </Button>
-              )}
-
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1 ml-auto bg-transparent"
-                onClick={() => openEditModal(restaurant)}
-              >
-                <Edit2 size={16} />
-                Sửa
-              </Button>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          ))
+        )}
       </div>
 
       {/* Details Modal */}
       {showDetails && selectedRestaurant && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-8 space-y-6">
-              <div className="flex justify-between items-start">
-                <h2 className="text-2xl font-bold">{selectedRestaurant.name}</h2>
-                <Button variant="ghost" size="sm" onClick={() => setShowDetails(false)} className="text-xl">
-                  ✕
-                </Button>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">{selectedRestaurant.name}</h2>
+                <p className="text-muted-foreground mt-1">{selectedRestaurant.address}</p>
               </div>
-
-              {/* Menu Section */}
-              <div className="space-y-3">
-                <h3 className="font-semibold text-lg">Menu</h3>
-                <div className="bg-muted/50 rounded-lg p-4">
-                  <p className="text-sm">
-                    <span className="font-medium">Tổng số món:</span> {selectedRestaurant.menu.items}
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-medium">Khoảng giá:</span> {selectedRestaurant.menu.priceRange}
-                  </p>
-                </div>
-              </div>
-
-              {/* Promotions Section */}
-              {selectedRestaurant.promotions.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-lg">Khuyến mãi</h3>
-                  <div className="space-y-2">
-                    {selectedRestaurant.promotions.map((promo, idx) => (
-                      <div key={idx} className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                        <p className="font-medium text-blue-900">{promo.title}</p>
-                        {promo.discount > 0 && <p className="text-sm text-blue-700">Giảm: {promo.discount}%</p>}
-                        <p className="text-xs text-blue-600">Hết hạn: {promo.validTill}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Performance Section */}
-              {selectedRestaurant.status === "Hoạt động" && (
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-lg">Hiệu suất</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-muted/50 rounded-lg p-4">
-                      <p className="text-xs text-muted-foreground mb-1">Doanh thu</p>
-                      <p className="text-lg font-bold">{(selectedRestaurant.revenue / 1000000).toFixed(1)}M</p>
-                    </div>
-                    <div className="bg-muted/50 rounded-lg p-4">
-                      <p className="text-xs text-muted-foreground mb-1">Tỉ lệ huỷ</p>
-                      <p className="text-lg font-bold">{selectedRestaurant.cancelRate}%</p>
-                    </div>
-                    <div className="bg-muted/50 rounded-lg p-4">
-                      <p className="text-xs text-muted-foreground mb-1">Đánh giá</p>
-                      <p className="text-lg font-bold">{selectedRestaurant.rating}/5</p>
-                    </div>
-                    <div className="bg-muted/50 rounded-lg p-4">
-                      <p className="text-xs text-muted-foreground mb-1">Tổng review</p>
-                      <p className="text-lg font-bold">{selectedRestaurant.reviewCount}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Violations Section */}
-              {selectedRestaurant.violations > 0 && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-2">
-                  <p className="font-semibold text-red-900 flex items-center gap-2">
-                    <AlertCircle size={18} />
-                    Vi phạm: {selectedRestaurant.violations}
-                  </p>
-                  <p className="text-sm text-red-700">Cần giám sát kỹ lưỡng hoặc xem xét tạm ngưng hoạt động</p>
-                </div>
-              )}
-
-              <Button onClick={() => setShowDetails(false)} className="w-full bg-primary hover:bg-primary/90">
-                Đóng
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setShowDetails(false)
+                  setSelectedRestaurant(null)
+                }}
+              >
+                <X size={20} />
               </Button>
             </div>
-          </Card>
-        </div>
-      )}
 
-      {/* Edit Modal */}
-      {showEditModal && editingRestaurant && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-8 space-y-6">
-              <div className="flex justify-between items-start">
-                <h2 className="text-2xl font-bold">Chỉnh sửa thông tin nhà hàng</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setShowEditModal(false)
-                    setEditingRestaurant(null)
-                  }}
-                  className="text-xl"
-                >
-                  ✕
-                </Button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Tên nhà hàng</label>
-                  <Input
-                    value={editingRestaurant.name}
-                    onChange={(e) => handleEditRestaurant('name', e.target.value)}
-                    className="w-full"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Địa chỉ</label>
-                  <Input
-                    value={editingRestaurant.address}
-                    onChange={(e) => handleEditRestaurant('address', e.target.value)}
-                    className="w-full"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Email</label>
-                  <Input
-                    value={editingRestaurant.email}
-                    onChange={(e) => handleEditRestaurant('email', e.target.value)}
-                    className="w-full"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Số điện thoại</label>
-                  <Input
-                    value={editingRestaurant.contact}
-                    onChange={(e) => handleEditRestaurant('contact', e.target.value)}
-                    className="w-full"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Khoảng giá menu</label>
-                  <Input
-                    value={editingRestaurant.menu.priceRange}
-                    onChange={(e) =>
-                      handleEditRestaurant('menu', { ...editingRestaurant.menu, priceRange: e.target.value })
-                    }
-                    className="w-full"
-                  />
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold text-foreground mb-2">Thông tin liên hệ</h3>
+                <div className="space-y-1 text-sm">
+                  <p className="text-muted-foreground">
+                    <span className="font-medium">Chủ sở hữu:</span> {selectedRestaurant.ownerId?.name}
+                  </p>
+                  <p className="text-muted-foreground">
+                    <span className="font-medium">Email:</span> {selectedRestaurant.ownerId?.email}
+                  </p>
+                  <p className="text-muted-foreground">
+                    <span className="font-medium">Điện thoại:</span> {selectedRestaurant.phone}
+                  </p>
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-4 border-t border-border">
-                <Button
-                  onClick={handleSaveEdit}
-                  className="flex-1 bg-primary hover:bg-primary/90"
-                >
-                  Lưu thay đổi
-                </Button>
-                <Button
-                  onClick={() => {
-                    setShowEditModal(false)
-                    setEditingRestaurant(null)
-                  }}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  Hủy
-                </Button>
+              <div>
+                <h3 className="font-semibold text-foreground mb-2">Chi tiết kinh doanh</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-muted/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Đơn tối thiểu</p>
+                    <p className="font-bold">{selectedRestaurant.minOrder.toLocaleString()}đ</p>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Đơn tối đa</p>
+                    <p className="font-bold">{selectedRestaurant.maxOrder.toLocaleString()}đ</p>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Đánh giá</p>
+                    <p className="font-bold">
+                      {selectedRestaurant.rating > 0 ? `${selectedRestaurant.rating}/5` : "Chưa có"}
+                    </p>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Trạng thái</p>
+                    <p className="font-bold">
+                      {statusMapping[selectedRestaurant.status] || selectedRestaurant.status}
+                    </p>
+                  </div>
+                </div>
               </div>
+
+              <div>
+                <h3 className="font-semibold text-foreground mb-2">Thông tin khác</h3>
+                <div className="space-y-1 text-sm">
+                  <p className="text-muted-foreground">
+                    <span className="font-medium">Ngày đăng ký:</span>{" "}
+                    {new Date(selectedRestaurant.createdAt).toLocaleString("vi-VN")}
+                  </p>
+                  <p className="text-muted-foreground">
+                    <span className="font-medium">Cập nhật lần cuối:</span>{" "}
+                    {new Date(selectedRestaurant.updatedAt).toLocaleString("vi-VN")}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <Button
+                onClick={() => {
+                  setShowDetails(false)
+                  setSelectedRestaurant(null)
+                }}
+                className="w-full"
+              >
+                Đóng
+              </Button>
             </div>
           </Card>
         </div>

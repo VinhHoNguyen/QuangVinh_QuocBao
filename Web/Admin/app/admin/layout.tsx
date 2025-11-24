@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, X, LogOut, Users, Store, Package, CreditCard, BarChart2, MessageCircle } from "lucide-react"
+import { Menu, X, LogOut, Users, Store, Package, CreditCard, BarChart2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function AdminLayout({
@@ -39,9 +39,8 @@ export default function AdminLayout({
     { href: "/admin/restaurants", label: "Quản lý nhà hàng", icon: Store },
     { href: "/admin/drones", label: "Quản lý Drone", icon: Package },
     { href: "/admin/orders", label: "Quản lý đơn hàng", icon: Package },
-    { href: "/admin/payments", label: "Quản lý thanh toán", icon: CreditCard },
+    // { href: "/admin/payments", label: "Quản lý thanh toán", icon: CreditCard },
     { href: "/admin/reports", label: "Báo cáo & thống kê", icon: BarChart2 },
-    { href: "/admin/support", label: "Phản hồi & hỗ trợ", icon: MessageCircle },
   ]
 
   const handleLogout = () => {

@@ -2,15 +2,15 @@
 
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import {
   BarChart,
   Bar,
   LineChart,
   Line,
-  PieChart,
-  Pie,
-  Cell,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -19,82 +19,118 @@ import {
   ResponsiveContainer,
 } from "recharts"
 
-const reports = [
-  {
-    title: "Báo cáo doanh thu tháng",
-    description: "Thống kê tổng doanh thu, so sánh với tháng trước",
-    date: "Cập nhật: 2025-01-11",
-    type: "Tài chính",
-  },
-  {
-    title: "Báo cáo hiệu suất giao drone",
-    description: "Tỷ lệ thành công, thời gian giao trung bình, số lượng chuyến",
-    date: "Cập nhật: 2025-01-11",
-    type: "Vận hành",
-  },
-  {
-    title: "Báo cáo tỉ lệ đơn hủy",
-    description: "Phân tích nguyên nhân hủy, so sánh với các kỳ trước",
-    date: "Cập nhật: 2025-01-10",
-    type: "Khách hàng",
-  },
-  {
-    title: "Báo cáo tình trạng hoạt động khu vực",
-    description: "Hiệu suất giao hàng theo từng quận/huyện",
-    date: "Cập nhật: 2025-01-11",
-    type: "Khu vực",
-  },
-]
+interface Order {
+  _id: string
+  totalPrice: number
+  status: string
+  paymentMethod: string
+  createdAt: string
+}
 
-const revenueData = [
-  { date: "01/01", revenue: 2400, orders: 120, cancels: 8 },
-  { date: "02/01", revenue: 3200, orders: 145, cancels: 12 },
-  { date: "03/01", revenue: 2800, orders: 130, cancels: 9 },
-  { date: "04/01", revenue: 3600, orders: 160, cancels: 10 },
-  { date: "05/01", revenue: 4200, orders: 185, cancels: 14 },
-  { date: "06/01", revenue: 3900, orders: 172, cancels: 11 },
-  { date: "07/01", revenue: 4500, orders: 200, cancels: 15 },
-]
+interface Restaurant {
+  _id: string
+  name: string
+}
 
-const droneStats = [
-  { id: "D001", name: "Drone 001", totalFlights: 245, successRate: 98.4, avgTime: 18, battery: 85 },
-  { id: "D002", name: "Drone 002", totalFlights: 223, successRate: 97.8, avgTime: 19, battery: 72 },
-  { id: "D003", name: "Drone 003", totalFlights: 198, successRate: 99.1, avgTime: 17, battery: 91 },
-  { id: "D004", name: "Drone 004", totalFlights: 189, successRate: 96.3, avgTime: 20, battery: 45 },
-  { id: "D005", name: "Drone 005", totalFlights: 210, successRate: 98.6, avgTime: 18, battery: 68 },
-]
-
-const restaurantStats = [
-  { id: "R001", name: "Phở Hà Nội", orders: 156, revenue: 18720, rating: 4.8, cancelRate: 2.5 },
-  { id: "R002", name: "Cơm Tấm Sài Gòn", orders: 143, revenue: 15860, rating: 4.6, cancelRate: 3.2 },
-  { id: "R003", name: "Bánh Mì Việt", orders: 128, revenue: 12160, rating: 4.7, cancelRate: 2.8 },
-  { id: "R004", name: "Tôm Hùm Hoàng Gia", orders: 98, revenue: 28350, rating: 4.9, cancelRate: 1.5 },
-  { id: "R005", name: "Gà Rô Tí Nakhon", orders: 87, revenue: 9570, rating: 4.5, cancelRate: 4.1 },
-]
-
-const paymentMethods = [
-  { name: "VNPay", value: 42, color: "#2563eb" },
-  { name: "Momo", value: 35, color: "#d84315" },
-  { name: "ZaloPay", value: 18, color: "#0084ff" },
-  { name: "COD", value: 5, color: "#90a4ae" },
-]
-
-const cancelReasons = [
-  { reason: "Hết hàng", count: 32 },
-  { reason: "Giao thất lại", count: 28 },
-  { reason: "Khách hủy", count: 22 },
-  { reason: "Drone có sự cố", count: 18 },
-  { reason: "Lỗi hệ thống", count: 8 },
-]
+interface Drone {
+  _id: string
+  model: string
+  status: string
+  battery: number
+}
 
 export default function ReportsPage() {
-  const [timeframe, setTimeframe] = useState("month")
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [orders, setOrders] = useState<Order[]>([])
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
+  const [drones, setDrones] = useState<Drone[]>([])
 
-  const totalOrders = revenueData.reduce((sum, d) => sum + d.orders, 0)
-  const totalRevenue = revenueData.reduce((sum, d) => sum + d.revenue, 0)
-  const totalCancels = revenueData.reduce((sum, d) => sum + d.cancels, 0)
-  const cancelRate = ((totalCancels / totalOrders) * 100).toFixed(1)
-  const avgRating = (restaurantStats.reduce((sum, r) => sum + r.rating, 0) / restaurantStats.length).toFixed(1)
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      const token = localStorage.getItem("admin_token") || localStorage.getItem("token")
+      
+      if (!token) {
+        router.push("/login")
+        return
+      }
+
+      const headers = {
+        Authorization: `Bearer ${token}`,
+      }
+
+      // Load orders, restaurants, and drones in parallel
+      const [ordersRes, restaurantsRes, dronesRes] = await Promise.all([
+        fetch("http://localhost:5000/api/orders", { headers }),
+        fetch("http://localhost:5000/api/restaurants", { headers }),
+        fetch("http://localhost:5000/api/drones", { headers }),
+      ])
+
+      if (ordersRes.ok) {
+        const ordersData = await ordersRes.json()
+        setOrders(ordersData.data || [])
+      }
+
+      if (restaurantsRes.ok) {
+        const restaurantsData = await restaurantsRes.json()
+        setRestaurants(restaurantsData.data || [])
+      }
+
+      if (dronesRes.ok) {
+        const dronesData = await dronesRes.json()
+        setDrones(dronesData.data || [])
+      }
+    } catch (error) {
+      console.error("Error loading data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Calculate statistics from real data
+  const totalOrders = orders.length
+  const totalRevenue = orders.reduce((sum, order) => sum + order.totalPrice, 0)
+  const completedOrders = orders.filter(o => o.status === "completed" || o.status === "delivered").length
+  const cancelledOrders = orders.filter(o => o.status === "cancelled").length
+  const cancelRate = totalOrders > 0 ? ((cancelledOrders / totalOrders) * 100).toFixed(1) : "0.0"
+  
+  // Active drones
+  const activeDrones = drones.filter(d => d.status === "available" || d.status === "busy").length
+  
+  // Payment method distribution
+  const paymentMethodsData = orders.reduce((acc: any[], order) => {
+    const existing = acc.find(item => item.name === order.paymentMethod)
+    if (existing) {
+      existing.count++
+    } else {
+      acc.push({ name: order.paymentMethod, count: 1 })
+    }
+    return acc
+  }, [])
+
+  // Order status distribution
+  const statusDistribution = orders.reduce((acc: any[], order) => {
+    const existing = acc.find(item => item.status === order.status)
+    if (existing) {
+      existing.count++
+    } else {
+      acc.push({ status: order.status, count: 1 })
+    }
+    return acc
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="text-center">Đang tải dữ liệu...</div>
+      </div>
+    )
+  }
 
   const handleExportExcel = () => {
     alert("✓ Đang xuất báo cáo Excel...")
@@ -123,130 +159,117 @@ export default function ReportsPage() {
       </div>
 
       {/* Summary cards for key metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card className="p-4 border border-border">
           <p className="text-sm text-muted-foreground">Tổng đơn hàng</p>
           <p className="text-3xl font-bold text-primary mt-2">{totalOrders}</p>
-          <p className="text-xs text-green-600 mt-1">+12% so với tuần trước</p>
+          <p className="text-xs text-muted-foreground mt-1">Tất cả đơn hàng</p>
         </Card>
         <Card className="p-4 border border-border">
           <p className="text-sm text-muted-foreground">Doanh thu</p>
-          <p className="text-3xl font-bold text-primary mt-2">{(totalRevenue / 1000).toFixed(1)}K</p>
-          <p className="text-xs text-green-600 mt-1">+8% so với tuần trước</p>
+          <p className="text-3xl font-bold text-primary mt-2">{(totalRevenue / 1000000).toFixed(1)}M</p>
+          <p className="text-xs text-muted-foreground mt-1">{totalRevenue.toLocaleString("vi-VN")}đ</p>
+        </Card>
+        <Card className="p-4 border border-border">
+          <p className="text-sm text-muted-foreground">Đã hoàn thành</p>
+          <p className="text-3xl font-bold text-green-600 mt-2">{completedOrders}</p>
+          <p className="text-xs text-muted-foreground mt-1">{totalOrders > 0 ? ((completedOrders/totalOrders)*100).toFixed(1) : 0}% đơn hàng</p>
         </Card>
         <Card className="p-4 border border-border">
           <p className="text-sm text-muted-foreground">Tỉ lệ hủy</p>
-          <p className="text-3xl font-bold text-primary mt-2">{cancelRate}%</p>
-          <p className="text-xs text-yellow-600 mt-1">{totalCancels} đơn đã hủy</p>
+          <p className="text-3xl font-bold text-red-600 mt-2">{cancelRate}%</p>
+          <p className="text-xs text-muted-foreground mt-1">{cancelledOrders} đơn đã hủy</p>
         </Card>
         <Card className="p-4 border border-border">
-          <p className="text-sm text-muted-foreground">Đánh giá TB</p>
-          <p className="text-3xl font-bold text-primary mt-2">{avgRating}⭐</p>
-          <p className="text-xs text-green-600 mt-1">Từ {restaurantStats.length} nhà hàng</p>
+          <p className="text-sm text-muted-foreground">Drone hoạt động</p>
+          <p className="text-3xl font-bold text-primary mt-2">{activeDrones}/{drones.length}</p>
+          <p className="text-xs text-muted-foreground mt-1">{restaurants.length} nhà hàng</p>
         </Card>
       </div>
 
-      {/* Revenue trend chart */}
-      <Card className="p-6 border border-border">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Xu hướng doanh thu & đơn hàng</h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={revenueData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis yAxisId="left" />
-            <YAxis yAxisId="right" orientation="right" />
-            <Tooltip />
-            <Legend />
-            <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#d84315" name="Doanh thu (K)" />
-            <Line yAxisId="right" type="monotone" dataKey="orders" stroke="#2563eb" name="Số đơn" />
-          </LineChart>
-        </ResponsiveContainer>
-      </Card>
-
-      {/* Payment methods and cancel reasons pie charts */}
+      {/* Payment methods and order status charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="p-6 border border-border">
           <h2 className="text-lg font-semibold text-foreground mb-4">Phương thức thanh toán</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie
-                data={paymentMethods}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, value }) => `${name} ${value}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {paymentMethods.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-            </PieChart>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={paymentMethodsData} layout="horizontal">
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis type="number" />
+              <YAxis dataKey="name" type="category" width={100} />
+              <Tooltip />
+              <Bar dataKey="count" fill="#2563eb" />
+            </BarChart>
           </ResponsiveContainer>
         </Card>
 
         <Card className="p-6 border border-border">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Lý do hủy đơn</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={cancelReasons}>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Phân bố trạng thái đơn hàng</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={statusDistribution}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="reason" />
+              <XAxis dataKey="status" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="count" fill="#d84315" />
-            </BarChart>
+              <Area type="monotone" dataKey="count" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} />
+            </AreaChart>
           </ResponsiveContainer>
         </Card>
       </div>
 
       {/* Drone performance table */}
       <Card className="p-6 border border-border">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Hiệu suất hoạt động Drone</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Danh sách Drone</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left py-3 px-4 font-semibold text-foreground">Mã Drone</th>
-                <th className="text-left py-3 px-4 font-semibold text-foreground">Tên</th>
-                <th className="text-center py-3 px-4 font-semibold text-foreground">Tổng chuyến</th>
-                <th className="text-center py-3 px-4 font-semibold text-foreground">Tỉ lệ thành công</th>
-                <th className="text-center py-3 px-4 font-semibold text-foreground">Thời gian TB (phút)</th>
+                <th className="text-left py-3 px-4 font-semibold text-foreground">Model</th>
+                <th className="text-center py-3 px-4 font-semibold text-foreground">Trạng thái</th>
                 <th className="text-center py-3 px-4 font-semibold text-foreground">Pin</th>
               </tr>
             </thead>
             <tbody>
-              {droneStats.map((drone) => (
-                <tr key={drone.id} className="border-b border-border hover:bg-muted/50">
-                  <td className="py-3 px-4 text-foreground font-mono">{drone.id}</td>
-                  <td className="py-3 px-4 text-foreground">{drone.name}</td>
-                  <td className="py-3 px-4 text-center">{drone.totalFlights}</td>
-                  <td className="py-3 px-4 text-center">
-                    <span
-                      className={
-                        drone.successRate >= 98 ? "text-green-600 font-semibold" : "text-yellow-600 font-semibold"
-                      }
-                    >
-                      {drone.successRate}%
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-center">{drone.avgTime}p</td>
-                  <td className="py-3 px-4 text-center">
-                    <span
-                      className={
-                        drone.battery >= 70
-                          ? "text-green-600 font-semibold"
-                          : drone.battery >= 40
-                            ? "text-yellow-600 font-semibold"
-                            : "text-red-600 font-semibold"
-                      }
-                    >
-                      {drone.battery}%
-                    </span>
+              {drones.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-muted-foreground">
+                    Không có dữ liệu drone
                   </td>
                 </tr>
-              ))}
+              ) : (
+                drones.map((drone) => (
+                  <tr key={drone._id} className="border-b border-border hover:bg-muted/50">
+                    <td className="py-3 px-4 text-foreground font-mono">{drone._id.slice(-6).toUpperCase()}</td>
+                    <td className="py-3 px-4 text-foreground">{drone.model}</td>
+                    <td className="py-3 px-4 text-center">
+                      <span
+                        className={`inline-block px-2 py-1 rounded text-xs ${
+                          drone.status === "available"
+                            ? "bg-green-100 text-green-700"
+                            : drone.status === "busy"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {drone.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <span
+                        className={
+                          drone.battery >= 70
+                            ? "text-green-600 font-semibold"
+                            : drone.battery >= 40
+                              ? "text-yellow-600 font-semibold"
+                              : "text-red-600 font-semibold"
+                        }
+                      >
+                        {drone.battery}%
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -254,81 +277,40 @@ export default function ReportsPage() {
 
       {/* Restaurant performance table */}
       <Card className="p-6 border border-border">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Hiệu suất hoạt động Nhà hàng</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Danh sách Nhà hàng</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-3 px-4 font-semibold text-foreground">Mã NCC</th>
+                <th className="text-left py-3 px-4 font-semibold text-foreground">Mã</th>
                 <th className="text-left py-3 px-4 font-semibold text-foreground">Tên nhà hàng</th>
-                <th className="text-center py-3 px-4 font-semibold text-foreground">Số đơn</th>
-                <th className="text-center py-3 px-4 font-semibold text-foreground">Doanh thu</th>
-                <th className="text-center py-3 px-4 font-semibold text-foreground">Đánh giá</th>
-                <th className="text-center py-3 px-4 font-semibold text-foreground">Tỉ lệ hủy</th>
+                <th className="text-center py-3 px-4 font-semibold text-foreground">Trạng thái</th>
               </tr>
             </thead>
             <tbody>
-              {restaurantStats.map((restaurant) => (
-                <tr key={restaurant.id} className="border-b border-border hover:bg-muted/50">
-                  <td className="py-3 px-4 text-foreground font-mono">{restaurant.id}</td>
-                  <td className="py-3 px-4 text-foreground">{restaurant.name}</td>
-                  <td className="py-3 px-4 text-center font-semibold">{restaurant.orders}</td>
-                  <td className="py-3 px-4 text-center font-semibold text-primary">
-                    {restaurant.revenue.toLocaleString()}₫
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span className="text-yellow-500 font-semibold">{restaurant.rating}⭐</span>
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span
-                      className={
-                        restaurant.cancelRate <= 2.5
-                          ? "text-green-600 font-semibold"
-                          : restaurant.cancelRate <= 3.5
-                            ? "text-yellow-600 font-semibold"
-                            : "text-red-600 font-semibold"
-                      }
-                    >
-                      {restaurant.cancelRate}%
-                    </span>
+              {restaurants.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="py-6 text-center text-muted-foreground">
+                    Không có dữ liệu nhà hàng
                   </td>
                 </tr>
-              ))}
+              ) : (
+                restaurants.map((restaurant) => (
+                  <tr key={restaurant._id} className="border-b border-border hover:bg-muted/50">
+                    <td className="py-3 px-4 text-foreground font-mono">{restaurant._id.slice(-6).toUpperCase()}</td>
+                    <td className="py-3 px-4 text-foreground">{restaurant.name}</td>
+                    <td className="py-3 px-4 text-center">
+                      <span className="inline-block px-2 py-1 rounded text-xs bg-green-100 text-green-700">
+                        active
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </Card>
-
-      {/* Existing reports grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {reports.map((report, idx) => (
-          <Card key={idx} className="p-6 border border-border space-y-4">
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-3 flex-1">
-                <div className="p-2 rounded-lg bg-primary/10 mt-1">{/* Placeholder for chart icon */}</div>
-                <div>
-                  <h3 className="font-semibold text-foreground text-lg">{report.title}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{report.description}</p>
-                  <div className="flex items-center gap-4 mt-3">
-                    <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">{report.type}</span>
-                    <span className="text-xs text-muted-foreground">{report.date}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" size="sm" className="flex-1 bg-transparent">
-                {/* Placeholder for download icon */}
-                Excel
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1 bg-transparent">
-                {/* Placeholder for download icon */}
-                PDF
-              </Button>
-            </div>
-          </Card>
-        ))}
-      </div>
     </div>
   )
 }

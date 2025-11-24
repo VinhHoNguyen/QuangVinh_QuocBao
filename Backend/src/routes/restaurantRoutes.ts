@@ -6,6 +6,8 @@ import {
   updateRestaurant,
   deleteRestaurant,
   getRestaurantsByOwner,
+  approveRestaurant,
+  rejectRestaurant,
 } from '../controllers/restaurantController';
 import { authenticate, authorize } from '../middleware/auth';
 import { UserRole } from '../models/types';
@@ -15,6 +17,16 @@ const router = Router();
 // Public routes
 router.get('/', getAllRestaurants);
 router.get('/:id', getRestaurantById);
+
+// Restaurant registration (public)
+router.post('/register', async (req, res, next) => {
+  try {
+    const { register } = await import('../controllers/restaurantController');
+    register(req, res, next);
+  } catch (error) {
+    next(error);
+  }
+});
 
 // Protected routes - Restaurant owner and admin
 router.post(
@@ -39,6 +51,21 @@ router.get(
   authenticate,
   authorize(UserRole.RESTAURANT_OWNER),
   getRestaurantsByOwner
+);
+
+// Admin only - Approve/Reject restaurant
+router.post(
+  '/:id/approve',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  approveRestaurant
+);
+
+router.post(
+  '/:id/reject',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  rejectRestaurant
 );
 
 export default router;

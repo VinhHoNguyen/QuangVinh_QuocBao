@@ -140,20 +140,26 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!productResponse.ok) {
         throw new Error('Không thể lấy thông tin sản phẩm');
       }
-      const product = await productResponse.json();
+      const productData = await productResponse.json();
+      const product = productData.data || productData;
       
       // Check if cart has items from different restaurant
       if (cart.length > 0) {
         const existingRestaurantId = cart[0].restaurantId;
-        if (existingRestaurantId && product.restaurantId !== existingRestaurantId) {
+        const newRestaurantId = typeof product.restaurantId === 'object' 
+          ? product.restaurantId._id 
+          : product.restaurantId;
+          
+        if (existingRestaurantId && newRestaurantId && existingRestaurantId !== newRestaurantId) {
           const errorMsg = 'Bạn chỉ có thể đặt món từ một nhà hàng. Vui lòng xóa giỏ hàng hiện tại để đặt từ nhà hàng khác.';
           setError(errorMsg);
           toast({
-            title: 'Không thể thêm món',
+            title: '⚠️ Không thể thêm món',
             description: errorMsg,
             variant: 'destructive',
           });
-          throw new Error(errorMsg);
+          setLoading(false);
+          return; // Return instead of throw to avoid console error
         }
       }
 
@@ -174,7 +180,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Only show toast if we haven't already shown one
       if (!errorMessage.includes('đăng nhập') && !errorMessage.includes('một nhà hàng')) {
         toast({
-          title: 'Lỗi',
+          title: '❌ Lỗi',
           description: errorMessage,
           variant: 'destructive',
         });

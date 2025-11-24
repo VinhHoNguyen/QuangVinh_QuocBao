@@ -1,6 +1,7 @@
 import { Schema, model, Document, Types } from 'mongoose';
 
 export enum RestaurantStatus {
+  PENDING = 'pending',
   ACTIVE = 'active',
   INACTIVE = 'inactive',
   SUSPENDED = 'suspended',
@@ -32,7 +33,7 @@ const restaurantSchema = new Schema<IRestaurant>({
   minOrder: { type: Number, required: true },
   maxOrder: { type: Number, required: true },
   rating: { type: Number, default: 0 },
-  status: { type: String, enum: Object.values(RestaurantStatus), default: RestaurantStatus.ACTIVE },
+  status: { type: String, enum: Object.values(RestaurantStatus), default: RestaurantStatus.PENDING },
   ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
 }, {
   timestamps: true,
