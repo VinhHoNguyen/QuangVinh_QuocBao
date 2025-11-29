@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -115,7 +115,7 @@ const maintenanceLogs = [
 
 export default function DronesPage() {
   const [drones, setDrones] = useState(initialDrones)
-  const [orders] = useState(initialOrders)
+  const [orders, setOrders] = useState(initialOrders)
   const [activeTab, setActiveTab] = useState("list")
   const [selectedDrone, setSelectedDrone] = useState<(typeof initialDrones)[0] | null>(null)
   const [editingDrone, setEditingDrone] = useState<(typeof initialDrones)[0] | null>(null)
@@ -165,7 +165,76 @@ export default function DronesPage() {
     setShowAddModal(false)
     setNewDrone({ id: "", model: "", location: "" })
   }
-  
+
+  const loadDrones = async () => {
+    try {
+      const token = localStorage.getItem("admin_token") || localStorage.getItem("token")
+      const response = await fetch("http://localhost:5000/api/drones", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (response.ok) {
+        const data = await response.json()
+        const mappedDrones = (data.data || []).map((drone: any) => ({
+          id: drone.code || drone._id,
+          _id: drone._id,
+          model: drone.name || "Unknown Drone",
+          status: drone.status === 'available' ? "Hoạt động" : drone.status === 'maintenance' ? "Bảo trì" : "Ngoại tuyến",
+          battery: drone.battery || 0,
+          location: "Chưa xác định",
+          coordinates: null,
+          payload: { current: drone.currentLoad || 0, max: drone.capacity || 5.0 },
+          lastMaintenance: new Date().toISOString().split('T')[0],
+          nextMaintenance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          flightHours: 0,
+          incidents: 0,
+          heading: 0,
+          speed: 0,
+        }))
+        console.log('✅ Loaded drones:', mappedDrones)
+        console.log('📊 Drone details:', mappedDrones.map(d => ({ id: d.id, status: d.status, battery: d.battery })))
+        setDrones(mappedDrones)
+      } else {
+        console.log('❌ Failed to load drones, status:', response.status)
+      }
+    } catch (error) {
+      console.error("Error loading drones:", error)
+    }
+  }
+
+  const loadOrders = async () => {
+    try {
+      const token = localStorage.getItem("admin_token") || localStorage.getItem("token")
+      const response = await fetch("http://localhost:5000/api/orders?status=ready", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (response.ok) {
+        const data = await response.json()
+        const mappedOrders = (data.data || []).map((order: any) => ({
+          id: order._id,
+          customer: order.userId?.name || "Khách hàng",
+          restaurant: order.restaurantId?.name || "Nhà hàng",
+          status: "Chờ giao",
+          distance: 0,
+          weight: order.items.reduce((sum: number, item: any) => sum + item.quantity * 0.5, 0),
+          _order: order,
+        }))
+        setOrders(mappedOrders)
+      }
+    } catch (error) {
+      console.error("Error loading orders:", error)
+    }
+  }
+
+  useEffect(() => {
+    loadDrones()
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'assignment') {
+      loadOrders()
+    }
+  }, [activeTab])
+
   const [editForm, setEditForm] = useState({
     model: "",
     location: "",
@@ -193,11 +262,11 @@ export default function DronesPage() {
       drones.map((d) =>
         d.id === editingDrone.id
           ? {
-              ...d,
-              model: editForm.model,
-              location: editForm.location,
-              payload: { ...d.payload, max: editForm.payloadMax },
-            }
+            ...d,
+            model: editForm.model,
+            location: editForm.location,
+            payload: { ...d.payload, max: editForm.payloadMax },
+          }
           : d
       )
     )
@@ -212,10 +281,44 @@ export default function DronesPage() {
     }
   }
 
-  const handleAssignOrder = (droneId: string, orderId: string) => {
-    console.log(`[v0] Assigned order ${orderId} to drone ${droneId}`)
-    setShowAssignModal(false)
-    setSelectedOrder(null)
+  const handleAssignOrder = async (droneId: string, orderId: string) => {
+    try {
+      console.log('🚁 Assigning drone:', { droneId, orderId })
+      const token = localStorage.getItem("admin_token") || localStorage.getItem("token")
+      const deliveryRes = await fetch(`http://localhost:5000/api/deliveries/order/${orderId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      console.log('📦 Delivery response:', deliveryRes.status)
+      if (!deliveryRes.ok) {
+        alert('Chưa có thông tin giao hàng')
+        return
+      }
+      const deliveryData = await deliveryRes.json()
+      console.log('📦 Delivery data:', deliveryData)
+      const deliveryId = deliveryData.data._id
+      const assignRes = await fetch(`http://localhost:5000/api/deliveries/${deliveryId}/assign-drone`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ droneId }),
+      })
+      console.log('✈️ Assign response:', assignRes.status)
+      if (!assignRes.ok) {
+        const error = await assignRes.json()
+        console.error('❌ Assign error:', error)
+        alert(`Lỗi: ${error.message || 'Không thể gán drone'}`)
+        return
+      }
+      alert('✅ Đã gán drone thành công!')
+      setShowAssignModal(false)
+      setSelectedOrder(null)
+      await loadOrders()
+    } catch (error: any) {
+      console.error('Error assigning:', error)
+      alert(`Lỗi: ${error.message || 'Đã xảy ra lỗi'}`)
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -230,12 +333,12 @@ export default function DronesPage() {
 
   return (
     <div className="p-6 space-y-6">
-            <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Quản lý Drone & Đội Vận Hành</h1>
           <p className="text-muted-foreground mt-1">Theo dõi, gán công việc và quản lý bảo trì drone</p>
         </div>
-        <Button 
+        <Button
           className="gap-2 bg-primary hover:bg-primary/90"
           onClick={() => setShowAddModal(true)}
         >
@@ -253,15 +356,15 @@ export default function DronesPage() {
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Mã Drone</label>
-                  <Input 
-                    placeholder="VD: DR006" 
+                  <Input
+                    placeholder="VD: DR006"
                     value={newDrone.id}
                     onChange={(e) => setNewDrone({ ...newDrone, id: e.target.value })}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Model</label>
-                  <Input 
+                  <Input
                     placeholder="VD: DJI Mini 4 Pro"
                     value={newDrone.model}
                     onChange={(e) => setNewDrone({ ...newDrone, model: e.target.value })}
@@ -269,7 +372,7 @@ export default function DronesPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Vị trí</label>
-                  <Input 
+                  <Input
                     placeholder="VD: Base D - Cầu Giấy"
                     value={newDrone.location}
                     onChange={(e) => setNewDrone({ ...newDrone, location: e.target.value })}
@@ -277,16 +380,16 @@ export default function DronesPage() {
                 </div>
               </div>
               <div className="flex gap-2 pt-4 border-t border-border">
-                <Button 
-                  className="flex-1" 
+                <Button
+                  className="flex-1"
                   onClick={handleAddDrone}
                   disabled={!newDrone.id || !newDrone.model}
                 >
                   Thêm
                 </Button>
-                <Button 
-                  variant="outline" 
-                  className="flex-1 bg-transparent" 
+                <Button
+                  variant="outline"
+                  className="flex-1 bg-transparent"
                   onClick={() => {
                     setShowAddModal(false)
                     setNewDrone({ id: "", model: "", location: "" })
@@ -304,41 +407,37 @@ export default function DronesPage() {
       <div className="flex gap-2 border-b border-border">
         <button
           onClick={() => setActiveTab("list")}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === "list"
-              ? "text-primary border-b-2 border-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
+          className={`px-4 py-2 font-medium transition-colors ${activeTab === "list"
+            ? "text-primary border-b-2 border-primary"
+            : "text-muted-foreground hover:text-foreground"
+            }`}
         >
           Danh sách Drone
         </button>
         <button
           onClick={() => setActiveTab("map")}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === "map"
-              ? "text-primary border-b-2 border-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
+          className={`px-4 py-2 font-medium transition-colors ${activeTab === "map"
+            ? "text-primary border-b-2 border-primary"
+            : "text-muted-foreground hover:text-foreground"
+            }`}
         >
           Bản đồ Thời gian thực
         </button>
         <button
           onClick={() => setActiveTab("assignment")}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === "assignment"
-              ? "text-primary border-b-2 border-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
+          className={`px-4 py-2 font-medium transition-colors ${activeTab === "assignment"
+            ? "text-primary border-b-2 border-primary"
+            : "text-muted-foreground hover:text-foreground"
+            }`}
         >
           Gán công việc
         </button>
         <button
           onClick={() => setActiveTab("maintenance")}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === "maintenance"
-              ? "text-primary border-b-2 border-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
+          className={`px-4 py-2 font-medium transition-colors ${activeTab === "maintenance"
+            ? "text-primary border-b-2 border-primary"
+            : "text-muted-foreground hover:text-foreground"
+            }`}
         >
           Bảo trì & Sự cố
         </button>
@@ -516,9 +615,9 @@ export default function DronesPage() {
               {orders.map((order) => (
                 <div key={order.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                   <div>
-                    <p className="font-semibold text-foreground">{order.id}</p>
+                    <p className="font-semibold text-foreground">{order.customer} - {order.restaurant}</p>
                     <p className="text-sm text-muted-foreground">
-                      {order.customer} - {order.restaurant} ({order.distance}km, {order.weight}kg)
+                      Mã: {order.id.slice(-6).toUpperCase()} | {order.weight.toFixed(1)}kg
                     </p>
                   </div>
                   <Button
@@ -540,7 +639,7 @@ export default function DronesPage() {
             <h3 className="font-semibold text-foreground mb-4">Drone sẵn sàng</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {drones
-                .filter((d) => d.status === "Hoạt động" && d.battery > 30)
+                .filter((d) => d.battery > 20)
                 .map((drone) => (
                   <div key={drone.id} className="p-3 border border-border rounded-lg">
                     <div className="flex justify-between items-start mb-2">
@@ -552,10 +651,14 @@ export default function DronesPage() {
                         {drone.battery}%
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-2">{drone.location}</p>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {drone.status === "Hoạt động" ? "🟢 Đang trống - Có thể sử dụng" :
+                        drone.status === "Ngoại tuyến" ? "🔵 Đang giao hàng" :
+                          "🟡 Đang bảo trì"}
+                    </p>
                     {selectedOrder && (
-                      <Button size="sm" className="w-full" onClick={() => handleAssignOrder(drone.id, selectedOrder)}>
-                        Gán cho {selectedOrder}
+                      <Button size="sm" className="w-full" onClick={() => handleAssignOrder(drone._id, selectedOrder)}>
+                        Gán cho đơn
                       </Button>
                     )}
                   </div>
@@ -587,9 +690,8 @@ export default function DronesPage() {
                       <td className="px-6 py-4 text-muted-foreground">{log.date}</td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
-                            log.type === "Sự cố" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
-                          }`}
+                          className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${log.type === "Sự cố" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
+                            }`}
                         >
                           {log.type}
                         </span>

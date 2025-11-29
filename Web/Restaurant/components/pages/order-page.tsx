@@ -44,6 +44,13 @@ interface Order {
   shippingAddress?: { street: string; district: string; city: string }
 }
 
+interface Delivery {
+  _id: string
+  orderId: string
+  droneId?: string
+  status: string
+}
+
 export function OrderPage() {
   const { restaurantId } = useAuth()
   const [orders, setOrders] = useState<Order[]>([])
@@ -51,6 +58,7 @@ export function OrderPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [showRejectReason, setShowRejectReason] = useState(false)
   const [rejectReason, setRejectReason] = useState("")
+  const [deliveries, setDeliveries] = useState<Record<string, Delivery>>({})
 
   // Fetch orders on mount
   useEffect(() => {
@@ -64,6 +72,10 @@ export function OrderPage() {
       setLoading(true)
       const data = await orderAPI.getRestaurantOrders(restaurantId!)
       setOrders(data)
+      // Load deliveries for ready orders
+      data.filter((o: Order) => o.status === 'ready').forEach((order: Order) => {
+        loadDeliveryForOrder(order._id)
+      })
     } catch (error) {
       console.error('Error fetching orders:', error)
       toast.error('Không thể tải đơn hàng')
@@ -72,15 +84,31 @@ export function OrderPage() {
     }
   }
 
+  const loadDeliveryForOrder = async (orderId: string) => {
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('restaurant_token')
+      const response = await fetch(`http://localhost:5000/api/deliveries/order/${orderId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setDeliveries(prev => ({ ...prev, [orderId]: data.data }))
+      }
+    } catch (error) {
+      console.error('Error loading delivery:', error)
+    }
+  }
+
   const getOrderCounts = () => {
     if (!orders || !Array.isArray(orders)) {
-      return { pending: 0, preparing: 0, ready: 0, completed: 0 }
+      return { pending: 0, preparing: 0, ready: 0, delivering: 0, completed: 0 }
     }
     return {
       pending: orders.filter((o) => o.status === "pending").length,
       preparing: orders.filter((o) => o.status === "preparing").length,
       ready: orders.filter((o) => o.status === "ready").length,
-      completed: orders.filter((o) => o.status === "completed").length,
+      delivering: orders.filter((o) => o.status === "delivering").length,
+      completed: orders.filter((o) => o.status === "completed" || o.status === "delivered").length,
     }
   }
 
@@ -151,7 +179,7 @@ export function OrderPage() {
     <div className="space-y-6">
 
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 bg-muted">
+        <TabsList className="grid w-full grid-cols-5 bg-muted">
           <TabsTrigger
             value="pending"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -171,6 +199,12 @@ export function OrderPage() {
             Sẵn Sàng Giao ({counts.ready})
           </TabsTrigger>
           <TabsTrigger
+            value="delivering"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Đang Giao ({counts.delivering})
+          </TabsTrigger>
+          <TabsTrigger
             value="completed"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
@@ -181,47 +215,47 @@ export function OrderPage() {
         <TabsContent value="pending" className="space-y-4">
           {orders && orders.length > 0 ? (
             orders
-            .filter((order) => order.status === "pending")
-            .map((order) => (
-              <Card key={order._id} className="border-border hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <p className="font-bold text-lg text-foreground">#{order._id.slice(-6).toUpperCase()}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {order.shippingAddress?.street}, {order.shippingAddress?.district}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {new Date(order.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                      </p>
+              .filter((order) => order.status === "pending")
+              .map((order) => (
+                <Card key={order._id} className="border-border hover:shadow-lg transition-shadow">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <p className="font-bold text-lg text-foreground">#{order._id.slice(-6).toUpperCase()}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {order.shippingAddress?.street}, {order.shippingAddress?.district}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {new Date(order.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      <Badge className="bg-yellow-100 text-yellow-800">{STATUS_MAP[order.status]}</Badge>
                     </div>
-                    <Badge className="bg-yellow-100 text-yellow-800">{STATUS_MAP[order.status]}</Badge>
-                  </div>
-                  <p className="text-sm text-foreground mb-3">
-                    <span className="font-semibold">Món:</span>{' '}
-                    {order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}
-                  </p>
-                  <p className="text-lg font-bold text-primary mb-4">
-                    Tổng: {order.totalPrice.toLocaleString("vi-VN")}đ
-                  </p>
-                  <div className="flex gap-2">
-                    <Button className="flex-1 bg-primary hover:bg-accent" onClick={() => handleAcceptOrder(order._id)}>
-                      <Check size={16} className="mr-2" /> Chấp Nhận
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="flex-1 text-destructive hover:bg-destructive hover:text-destructive-foreground bg-transparent"
-                      onClick={() => {
-                        setSelectedOrder(order)
-                        setShowRejectReason(true)
-                      }}
-                    >
-                      <X size={16} className="mr-2" /> Từ Chối
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                    <p className="text-sm text-foreground mb-3">
+                      <span className="font-semibold">Món:</span>{' '}
+                      {order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}
+                    </p>
+                    <p className="text-lg font-bold text-primary mb-4">
+                      Tổng: {order.totalPrice.toLocaleString("vi-VN")}đ
+                    </p>
+                    <div className="flex gap-2">
+                      <Button className="flex-1 bg-primary hover:bg-accent" onClick={() => handleAcceptOrder(order._id)}>
+                        <Check size={16} className="mr-2" /> Chấp Nhận
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="flex-1 text-destructive hover:bg-destructive hover:text-destructive-foreground bg-transparent"
+                        onClick={() => {
+                          setSelectedOrder(order)
+                          setShowRejectReason(true)
+                        }}
+                      >
+                        <X size={16} className="mr-2" /> Từ Chối
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               Chưa có đơn hàng nào đang chờ xử lý
@@ -232,34 +266,34 @@ export function OrderPage() {
         <TabsContent value="preparing" className="space-y-4">
           {orders && orders.length > 0 ? (
             orders
-            .filter((order) => order.status === 'preparing')
-            .map((order) => (
-              <Card key={order._id} className="border-border hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <p className="font-bold text-lg text-foreground">#{order._id.slice(-6).toUpperCase()}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {order.shippingAddress?.street}, {order.shippingAddress?.district}
-                      </p>
+              .filter((order) => order.status === 'preparing')
+              .map((order) => (
+                <Card key={order._id} className="border-border hover:shadow-lg transition-shadow">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <p className="font-bold text-lg text-foreground">#{order._id.slice(-6).toUpperCase()}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {order.shippingAddress?.street}, {order.shippingAddress?.district}
+                        </p>
+                      </div>
+                      <Badge className={STATUS_COLORS[STATUS_MAP[order.status] as keyof typeof STATUS_COLORS]}>
+                        {STATUS_MAP[order.status]}
+                      </Badge>
                     </div>
-                    <Badge className={STATUS_COLORS[STATUS_MAP[order.status] as keyof typeof STATUS_COLORS]}>
-                      {STATUS_MAP[order.status]}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-foreground mb-3">
-                    <span className="font-semibold">Món:</span>{' '}
-                    {order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}
-                  </p>
-                  <p className="text-lg font-bold text-primary mb-4">
-                    Tổng: {order.totalPrice.toLocaleString("vi-VN")}đ
-                  </p>
-                  <Button className="w-full bg-primary hover:bg-accent" onClick={() => handleUpdateStatus(order._id)}>
-                    <TrendingUp size={16} className="mr-2" /> Hoàn Thành Chuẩn Bị
-                  </Button>
-                </CardContent>
-              </Card>
-            ))
+                    <p className="text-sm text-foreground mb-3">
+                      <span className="font-semibold">Món:</span>{' '}
+                      {order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}
+                    </p>
+                    <p className="text-lg font-bold text-primary mb-4">
+                      Tổng: {order.totalPrice.toLocaleString("vi-VN")}đ
+                    </p>
+                    <Button className="w-full bg-primary hover:bg-accent" onClick={() => handleUpdateStatus(order._id)}>
+                      <TrendingUp size={16} className="mr-2" /> Hoàn Thành Chuẩn Bị
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               Chưa có đơn hàng nào đang chuẩn bị
@@ -270,37 +304,60 @@ export function OrderPage() {
         <TabsContent value="ready" className="space-y-4">
           {orders && orders.length > 0 ? (
             orders
-            .filter((order) => order.status === 'ready')
-            .map((order) => (
-              <Card key={order._id} className="border-border hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <p className="font-bold text-lg text-foreground">#{order._id.slice(-6).toUpperCase()}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {order.shippingAddress?.street}, {order.shippingAddress?.district}
-                      </p>
+              .filter((order) => order.status === 'ready')
+              .map((order) => (
+                <Card key={order._id} className="border-border hover:shadow-lg transition-shadow">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <p className="font-bold text-lg text-foreground">#{order._id.slice(-6).toUpperCase()}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {order.shippingAddress?.street}, {order.shippingAddress?.district}
+                        </p>
+                      </div>
+                      <Badge className={STATUS_COLORS[STATUS_MAP[order.status] as keyof typeof STATUS_COLORS]}>
+                        {STATUS_MAP[order.status]}
+                      </Badge>
                     </div>
-                    <Badge className={STATUS_COLORS[STATUS_MAP[order.status] as keyof typeof STATUS_COLORS]}>
-                      {STATUS_MAP[order.status]}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-foreground mb-3">
-                    <span className="font-semibold">Món:</span>{' '}
-                    {order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}
-                  </p>
-                  <p className="text-lg font-bold text-primary mb-4">
-                    Tổng: {order.totalPrice.toLocaleString("vi-VN")}đ
-                  </p>
-                  <Button 
-                    className="w-full bg-green-600 hover:bg-green-700 text-white" 
-                    onClick={() => handleShipperPickup(order._id)}
-                  >
-                    🚚 Shipper Đã Nhận Hàng
-                  </Button>
-                </CardContent>
-              </Card>
-            ))
+                    <p className="text-sm text-foreground mb-3">
+                      <span className="font-semibold">Món:</span>{' '}
+                      {order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}
+                    </p>
+                    <p className="text-lg font-bold text-primary mb-4">
+                      Tổng: {order.totalPrice.toLocaleString("vi-VN")}đ
+                    </p>
+                    {(() => {
+                      const delivery = deliveries[order._id];
+                      console.log('🔍 Order:', order._id.slice(-6), 'Delivery:', delivery, 'DroneId:', delivery?.droneId);
+
+                      if (!delivery) {
+                        return (
+                          <Button className="w-full bg-gray-400" disabled>
+                            Loading...
+                          </Button>
+                        );
+                      }
+
+                      if (delivery.droneId) {
+                        return (
+                          <Button
+                            className="w-full bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => handleUpdateStatus(order._id)}
+                          >
+                            🚁 Bắt Đầu Giao (Drone Đã Sẵn Sàng)
+                          </Button>
+                        );
+                      }
+
+                      return (
+                        <Button className="w-full bg-gray-400 cursor-not-allowed" disabled>
+                          ⏳ Chờ Gán Drone
+                        </Button>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              ))
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               Chưa có đơn hàng nào sẵn sàng giao
@@ -308,37 +365,78 @@ export function OrderPage() {
           )}
         </TabsContent>
 
+        <TabsContent value="delivering" className="space-y-4">
+          {orders && orders.length > 0 ? (
+            orders
+              .filter((order) => order.status === 'delivering')
+              .map((order) => (
+                <Card key={order._id} className="border-border hover:shadow-lg transition-shadow border-cyan-200">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <p className="font-bold text-lg text-foreground">#{order._id.slice(-6).toUpperCase()}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {order.shippingAddress?.street}, {order.shippingAddress?.district}
+                        </p>
+                      </div>
+                      <Badge className="bg-cyan-100 text-cyan-700">
+                        {STATUS_MAP[order.status]}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-foreground mb-3">
+                      <span className="font-semibold">Món:</span>{' '}
+                      {order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}
+                    </p>
+                    <p className="text-lg font-bold text-primary mb-4">
+                      Tổng: {order.totalPrice.toLocaleString("vi-VN")}đ
+                    </p>
+                    <Button
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => handleUpdateStatus(order._id)}
+                    >
+                      ✅ Xác Nhận Đã Giao
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              Chưa có đơn hàng nào đang giao
+            </div>
+          )}
+        </TabsContent>
+
         <TabsContent value="completed" className="space-y-4">
           {orders && orders.length > 0 ? (
             orders
-            .filter((order) => order.status === 'completed')
-            .map((order) => (
-              <Card key={order._id} className="border-border opacity-75">
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <p className="font-bold text-lg text-foreground">#{order._id.slice(-6).toUpperCase()}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {order.shippingAddress?.street}, {order.shippingAddress?.district}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {new Date(order.createdAt).toLocaleString('vi-VN')}
-                      </p>
+              .filter((order) => order.status === 'completed' || order.status === 'delivered')
+              .map((order) => (
+                <Card key={order._id} className="border-border opacity-75">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <p className="font-bold text-lg text-foreground">#{order._id.slice(-6).toUpperCase()}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {order.shippingAddress?.street}, {order.shippingAddress?.district}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {new Date(order.createdAt).toLocaleString('vi-VN')}
+                        </p>
+                      </div>
+                      <Badge className="bg-green-200 text-green-900">
+                        ✅ Đã Hoàn Thành
+                      </Badge>
                     </div>
-                    <Badge className="bg-green-200 text-green-900">
-                      ✅ Đã Hoàn Thành
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-foreground mb-3">
-                    <span className="font-semibold">Món:</span>{' '}
-                    {order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}
-                  </p>
-                  <p className="text-lg font-bold text-primary">
-                    Tổng: {order.totalPrice.toLocaleString("vi-VN")}đ
-                  </p>
-                </CardContent>
-              </Card>
-            ))
+                    <p className="text-sm text-foreground mb-3">
+                      <span className="font-semibold">Món:</span>{' '}
+                      {order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}
+                    </p>
+                    <p className="text-lg font-bold text-primary">
+                      Tổng: {order.totalPrice.toLocaleString("vi-VN")}đ
+                    </p>
+                  </CardContent>
+                </Card>
+              ))
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               Chưa có đơn hàng nào hoàn thành

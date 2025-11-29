@@ -3,7 +3,7 @@ import { AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../models/constants';
 import DeliveryModel from '../models/Delivery';
-import DroneModel from '../models/Drone';
+import DroneModel, { DroneStatus } from '../models/Drone';
 import LocationModel from '../models/Location';
 
 // Get all deliveries
@@ -102,6 +102,67 @@ export const trackDelivery = async (
   }
 };
 
+// Assign drone to delivery (Admin only)
+export const assignDroneToDelivery = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user) {
+      throw new AppError(ERROR_MESSAGES.UNAUTHORIZED, 401);
+    }
+
+    const { deliveryId } = req.params;
+    const { droneId } = req.body;
+
+    if (!droneId) {
+      throw new AppError('Drone ID is required', 400);
+    }
+
+    // Validate drone exists and is available
+    const drone = await DroneModel.findById(droneId);
+    if (!drone) {
+      throw new AppError('Drone not found', 404);
+    }
+    if (drone.status !== DroneStatus.AVAILABLE) {
+      throw new AppError('Drone is not available', 400);
+    }
+
+    // Find and update delivery
+    const delivery = await DeliveryModel.findById(deliveryId);
+    if (!delivery) {
+      throw new AppError('Delivery not found', 404);
+    }
+
+    // If there was a previously assigned drone, free it up
+    if (delivery.droneId) {
+      const oldDrone = await DroneModel.findById(delivery.droneId);
+      if (oldDrone) {
+        oldDrone.status = DroneStatus.AVAILABLE;
+        await oldDrone.save();
+      }
+    }
+
+    // Assign new drone
+    delivery.droneId = drone._id as any;
+    await delivery.save();
+
+    // Update drone status to in_transit (assigned to delivery)
+    drone.status = DroneStatus.IN_TRANSIT;
+    await drone.save();
+
+
+    res.status(200).json({
+      success: true,
+      message: 'Drone assigned successfully',
+      data: delivery,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Update delivery status
 export const updateDeliveryStatus = async (
   req: AuthRequest,
@@ -124,9 +185,18 @@ export const updateDeliveryStatus = async (
 
     delivery.status = status;
 
-    // If delivered, set actual time
+    // If delivered, set actual time and free up the drone
     if (status === 'delivered') {
       delivery.actualTime = new Date();
+
+      // Free up the drone - set status back to available
+      if (delivery.droneId) {
+        const drone = await DroneModel.findById(delivery.droneId);
+        if (drone) {
+          drone.status = DroneStatus.AVAILABLE;
+          await drone.save();
+        }
+      }
     }
 
     await delivery.save();

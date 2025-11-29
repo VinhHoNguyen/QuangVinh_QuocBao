@@ -292,6 +292,17 @@ export const updateOrderStatus = async (
       throw new AppError(ERROR_MESSAGES.ORDER_NOT_FOUND, 404);
     }
 
+    // 🚁 Check if drone is assigned before allowing "delivering" status
+    if (status === OrderStatus.DELIVERING) {
+      const delivery = await DeliveryModel.findOne({ orderId: id });
+      if (!delivery) {
+        throw new AppError('Delivery record not found', 404);
+      }
+      if (!delivery.droneId) {
+        throw new AppError('Cannot start delivery: No drone assigned. Please contact admin.', 400);
+      }
+    }
+
     order.status = status;
     await order.save();
 

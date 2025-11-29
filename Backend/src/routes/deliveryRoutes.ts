@@ -4,6 +4,7 @@ import {
   getDeliveryById,
   trackDelivery,
   updateDeliveryStatus,
+  assignDroneToDelivery,
 } from '../controllers/deliveryController';
 import { authenticate, authorize } from '../middleware/auth';
 import { UserRole } from '../models/types';
@@ -22,6 +23,14 @@ router.put(
   authenticate,
   authorize(UserRole.ADMIN, UserRole.DELIVERY),
   updateDeliveryStatus
+);
+
+// Assign drone to delivery - admin only
+router.patch(
+  '/:deliveryId/assign-drone',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  assignDroneToDelivery
 );
 
 export default router;
