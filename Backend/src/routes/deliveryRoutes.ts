@@ -17,11 +17,11 @@ router.get('/:id', authenticate, getDeliveryById);
 router.get('/track/:orderId', authenticate, trackDelivery);
 router.get('/order/:orderId', authenticate, trackDelivery); // Alias for mobile app
 
-// Update delivery status - admin and delivery
+// Update delivery status - admin, delivery, and restaurant owner
 router.put(
   '/:id/status',
   authenticate,
-  authorize(UserRole.ADMIN, UserRole.DELIVERY),
+  authorize(UserRole.ADMIN, UserRole.DELIVERY, UserRole.RESTAURANT_OWNER),
   updateDeliveryStatus
 );
 

@@ -11,6 +11,7 @@ const DroneMap = dynamic(() => import("@/components/drone-map"), { ssr: false })
 
 const initialDrones = [
   {
+    _id: "DR001",
     id: "DR001",
     model: "DJI Matrice 300 RTK",
     status: "Hoạt động",
@@ -26,6 +27,7 @@ const initialDrones = [
     speed: 15,
   },
   {
+    _id: "DR002",
     id: "DR002",
     model: "DJI Air 3",
     status: "Hoạt động",
@@ -41,6 +43,7 @@ const initialDrones = [
     speed: 18,
   },
   {
+    _id: "DR003",
     id: "DR003",
     model: "DJI Matrice 300 RTK",
     status: "Bảo trì",
@@ -56,6 +59,7 @@ const initialDrones = [
     speed: 0,
   },
   {
+    _id: "DR004",
     id: "DR004",
     model: "DJI Mini 3",
     status: "Hoạt động",
@@ -71,6 +75,7 @@ const initialDrones = [
     speed: 12,
   },
   {
+    _id: "DR005",
     id: "DR005",
     model: "DJI Air 3",
     status: "Cảnh báo",
@@ -146,12 +151,13 @@ export default function DronesPage() {
     }
 
     const droneToAdd: typeof initialDrones[0] = {
+      _id: id,
       id,
       model: newDrone.model,
       status: "Hoạt động",
       battery: 100,
       location: newDrone.location || "Chưa xác định",
-      coordinates: null as any, // Không hiện trên bản đồ
+      coordinates: { lat: 21.0285, lng: 105.8542 }, // Default to Hanoi
       payload: { current: 0, max: 3.0 },
       lastMaintenance: new Date().toISOString().split('T')[0],
       nextMaintenance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -180,8 +186,8 @@ export default function DronesPage() {
           model: drone.name || "Unknown Drone",
           status: drone.status === 'available' ? "Hoạt động" : drone.status === 'maintenance' ? "Bảo trì" : "Ngoại tuyến",
           battery: drone.battery || 0,
-          location: "Chưa xác định",
-          coordinates: null,
+          location: drone.currentLocationId ? `Location: ${drone.currentLocationId}` : "Chưa xác định",
+          coordinates: { lat: 21.0285 + (Math.random() - 0.5) * 0.1, lng: 105.8542 + (Math.random() - 0.5) * 0.1 },
           payload: { current: drone.currentLoad || 0, max: drone.capacity || 5.0 },
           lastMaintenance: new Date().toISOString().split('T')[0],
           nextMaintenance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -190,8 +196,8 @@ export default function DronesPage() {
           heading: 0,
           speed: 0,
         }))
-        console.log('✅ Loaded drones:', mappedDrones)
-        console.log('📊 Drone details:', mappedDrones.map(d => ({ id: d.id, status: d.status, battery: d.battery })))
+        console.log('✅ Loaded drones:', mappedDrones.length)
+        console.log('📊 Drone details:', mappedDrones.map((d: any) => ({ id: d.id, status: d.status, battery: d.battery, location: d.location })))
         setDrones(mappedDrones)
       } else {
         console.log('❌ Failed to load drones, status:', response.status)
@@ -232,6 +238,16 @@ export default function DronesPage() {
   useEffect(() => {
     if (activeTab === 'assignment') {
       loadOrders()
+    }
+  }, [activeTab])
+
+  // Auto-refresh drone list every 5 seconds when on list tab
+  useEffect(() => {
+    if (activeTab === 'list') {
+      const interval = setInterval(() => {
+        loadDrones()
+      }, 5000)
+      return () => clearInterval(interval)
     }
   }, [activeTab])
 
@@ -315,6 +331,7 @@ export default function DronesPage() {
       setShowAssignModal(false)
       setSelectedOrder(null)
       await loadOrders()
+      await loadDrones()
     } catch (error: any) {
       console.error('Error assigning:', error)
       alert(`Lỗi: ${error.message || 'Đã xảy ra lỗi'}`)
@@ -338,13 +355,15 @@ export default function DronesPage() {
           <h1 className="text-3xl font-bold text-foreground">Quản lý Drone & Đội Vận Hành</h1>
           <p className="text-muted-foreground mt-1">Theo dõi, gán công việc và quản lý bảo trì drone</p>
         </div>
-        <Button
-          className="gap-2 bg-primary hover:bg-primary/90"
-          onClick={() => setShowAddModal(true)}
-        >
-          <Plus size={18} />
-          Thêm Drone
-        </Button>
+        {activeTab === "list" && (
+          <Button
+            className="gap-2 bg-primary hover:bg-primary/90"
+            onClick={() => setShowAddModal(true)}
+          >
+            <Plus size={18} />
+            Thêm Drone
+          </Button>
+        )}
       </div>
 
       {/* State cho modal thêm drone */}
@@ -598,7 +617,7 @@ export default function DronesPage() {
 
           <div className="h-96 md:h-[600px] rounded-lg overflow-hidden border border-border">
             <DroneMap
-              drones={drones}
+              drones={drones.filter(d => d.coordinates)}
               followDroneId={followDroneId}
               selectedDroneId={selectedDrone?.id}
             />
@@ -657,7 +676,7 @@ export default function DronesPage() {
                           "🟡 Đang bảo trì"}
                     </p>
                     {selectedOrder && (
-                      <Button size="sm" className="w-full" onClick={() => handleAssignOrder(drone._id, selectedOrder)}>
+                      <Button size="sm" className="w-full" onClick={() => handleAssignOrder(drone._id || drone.id, selectedOrder)}>
                         Gán cho đơn
                       </Button>
                     )}
@@ -776,9 +795,13 @@ export default function DronesPage() {
                 <div className="p-3 bg-muted rounded">
                   <p className="text-xs text-muted-foreground mb-1">Vị trí</p>
                   <p className="font-semibold text-foreground">{selectedDrone.location}</p>
-                  <p className="text-xs text-muted-foreground">
-                    ({selectedDrone.coordinates.lat.toFixed(4)}, {selectedDrone.coordinates.lng.toFixed(4)})
-                  </p>
+                  {selectedDrone.coordinates ? (
+                    <p className="text-xs text-muted-foreground">
+                      ({selectedDrone.coordinates.lat.toFixed(4)}, {selectedDrone.coordinates.lng.toFixed(4)})
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">(Chưa có tọa độ)</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">

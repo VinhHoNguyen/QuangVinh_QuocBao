@@ -27,9 +27,9 @@ const STATUS_MAP: Record<string, string> = {
   'confirmed': 'ĐÃ CHẤP NHẬN',
   'preparing': 'ĐANG CHUẨN BỊ',
   'ready': 'SẴN SÀNG',
-  'picked_up': 'ĐÃ LẤY',
   'delivering': 'ĐANG GIAO',
   'delivered': 'ĐÃ GIAO',
+  'completed': 'ĐÃ HOÀN THÀNH',
   'cancelled': 'ĐÃ TỪ CHỐI',
 }
 
@@ -37,11 +37,14 @@ interface Order {
   _id: string
   restaurantId: string
   userId: string
-  items: Array<{ productId: string; name: string; quantity: number; price: number }>
+  items: Array<{ productId: string; productName: string; quantity: number; price: number }>
   totalPrice: number
   status: string
   createdAt: string
-  shippingAddress?: { street: string; district: string; city: string }
+  shippingAddress?: { street: string; district: string; city: string; ward: string; coordinates?: { latitude: number; longitude: number } }
+  customerName?: string
+  customerPhone?: string
+  notes?: string
 }
 
 interface Delivery {
@@ -59,6 +62,7 @@ export function OrderPage() {
   const [showRejectReason, setShowRejectReason] = useState(false)
   const [rejectReason, setRejectReason] = useState("")
   const [deliveries, setDeliveries] = useState<Record<string, Delivery>>({})
+  const [activeTab, setActiveTab] = useState("ready")
 
   // Fetch orders on mount
   useEffect(() => {
@@ -67,18 +71,42 @@ export function OrderPage() {
     }
   }, [restaurantId])
 
+  // Auto-refresh deliveries for ready orders every 3 seconds
+  useEffect(() => {
+    if (activeTab === 'ready') {
+      const interval = setInterval(() => {
+        orders
+          .filter((o) => o.status === 'ready')
+          .forEach((order) => {
+            loadDeliveryForOrder(order._id)
+          })
+      }, 3000)
+      return () => clearInterval(interval)
+    }
+  }, [activeTab, orders])
+
   const fetchOrders = async () => {
     try {
       setLoading(true)
       const data = await orderAPI.getRestaurantOrders(restaurantId!)
-      setOrders(data)
-      // Load deliveries for ready orders
-      data.filter((o: Order) => o.status === 'ready').forEach((order: Order) => {
-        loadDeliveryForOrder(order._id)
-      })
+
+      // Data should already be an array from API
+      if (Array.isArray(data) && data.length >= 0) {
+        setOrders(data)
+        // Load deliveries for ready orders
+        data
+          .filter((o: Order) => o.status === 'ready')
+          .forEach((order: Order) => {
+            loadDeliveryForOrder(order._id)
+          })
+      } else {
+        console.error("Received invalid orders data:", data)
+        setOrders([])
+      }
     } catch (error) {
       console.error('Error fetching orders:', error)
       toast.error('Không thể tải đơn hàng')
+      setOrders([])
     } finally {
       setLoading(false)
     }
@@ -92,7 +120,10 @@ export function OrderPage() {
       })
       if (response.ok) {
         const data = await response.json()
+        console.log('📦 Delivery loaded for order', orderId.slice(-6), ':', data.data)
         setDeliveries(prev => ({ ...prev, [orderId]: data.data }))
+      } else {
+        console.log('❌ Failed to load delivery for order', orderId.slice(-6), ':', response.status)
       }
     } catch (error) {
       console.error('Error loading delivery:', error)
@@ -137,7 +168,7 @@ export function OrderPage() {
   }
 
   const handleUpdateStatus = async (orderId: string) => {
-    const statusFlow = ['pending', 'confirmed', 'preparing', 'ready', 'picked_up', 'delivering', 'delivered']
+    const statusFlow = ['pending', 'confirmed', 'preparing', 'ready', 'delivering', 'delivered', 'completed']
     const order = orders.find(o => o._id === orderId)
     if (!order) return
 
@@ -147,6 +178,44 @@ export function OrderPage() {
     try {
       await orderAPI.updateStatus(orderId, nextStatus as any)
       toast.success('Đã cập nhật trạng thái')
+      
+      // If order is now delivered, also update delivery status to trigger drone release
+      if (nextStatus === 'delivered') {
+        try {
+          const token = localStorage.getItem('token') || localStorage.getItem('restaurant_token')
+          const deliveryRes = await fetch(`http://localhost:5000/api/deliveries/order/${orderId}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          })
+          if (deliveryRes.ok) {
+            const deliveryData = await deliveryRes.json()
+            const deliveryId = deliveryData.data._id
+            console.log('📦 Updating delivery status:', { deliveryId, orderId })
+            
+            // Update delivery status to 'delivered' so drone gets freed up
+            const updateRes = await fetch(`http://localhost:5000/api/deliveries/${deliveryId}/status`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ status: 'delivered' }),
+            })
+            const updateData = await updateRes.json()
+            console.log('✅ Delivery status updated:', { status: updateRes.status, data: updateData })
+            
+            if (!updateRes.ok) {
+              console.error('❌ Failed to update delivery status:', updateData)
+              toast.error('Không thể cập nhật trạng thái giao hàng')
+            }
+          } else {
+            console.error('❌ Failed to fetch delivery:', deliveryRes.status)
+          }
+        } catch (err) {
+          console.error('Error updating delivery status:', err)
+          toast.error('Lỗi: Không thể cập nhật trạng thái drone')
+        }
+      }
+      
       fetchOrders()
     } catch (error) {
       console.error('Error updating status:', error)
@@ -233,7 +302,7 @@ export function OrderPage() {
                     </div>
                     <p className="text-sm text-foreground mb-3">
                       <span className="font-semibold">Món:</span>{' '}
-                      {order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}
+                      {order.items.map(item => `${item.productName} x${item.quantity}`).join(', ')}
                     </p>
                     <p className="text-lg font-bold text-primary mb-4">
                       Tổng: {order.totalPrice.toLocaleString("vi-VN")}đ
@@ -283,7 +352,7 @@ export function OrderPage() {
                     </div>
                     <p className="text-sm text-foreground mb-3">
                       <span className="font-semibold">Món:</span>{' '}
-                      {order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}
+                      {order.items.map(item => `${item.productName} x${item.quantity}`).join(', ')}
                     </p>
                     <p className="text-lg font-bold text-primary mb-4">
                       Tổng: {order.totalPrice.toLocaleString("vi-VN")}đ
@@ -321,24 +390,36 @@ export function OrderPage() {
                     </div>
                     <p className="text-sm text-foreground mb-3">
                       <span className="font-semibold">Món:</span>{' '}
-                      {order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}
+                      {order.items.map(item => `${item.productName} x${item.quantity}`).join(', ')}
                     </p>
                     <p className="text-lg font-bold text-primary mb-4">
                       Tổng: {order.totalPrice.toLocaleString("vi-VN")}đ
                     </p>
                     {(() => {
                       const delivery = deliveries[order._id];
-                      console.log('🔍 Order:', order._id.slice(-6), 'Delivery:', delivery, 'DroneId:', delivery?.droneId);
+                      const hasDrone = delivery?.droneId && String(delivery.droneId).length > 0;
+                      
+                      console.log('🔍 Order render check:', { 
+                        orderId: order._id.slice(-6), 
+                        hasDelivery: !!delivery,
+                        droneId: delivery?.droneId,
+                        droneIdType: typeof delivery?.droneId,
+                        hasDrone: hasDrone,
+                        deliveryObj: delivery
+                      });
 
                       if (!delivery) {
                         return (
-                          <Button className="w-full bg-gray-400" disabled>
-                            Loading...
-                          </Button>
+                          <div className="space-y-2">
+                            <Button className="w-full bg-gray-400 cursor-not-allowed" disabled>
+                              ⏳ Loading...
+                            </Button>
+                          </div>
                         );
                       }
 
-                      if (delivery.droneId) {
+                      // Check if droneId exists (could be string or ObjectId)
+                      if (hasDrone) {
                         return (
                           <Button
                             className="w-full bg-green-600 hover:bg-green-700 text-white"
@@ -350,9 +431,14 @@ export function OrderPage() {
                       }
 
                       return (
-                        <Button className="w-full bg-gray-400 cursor-not-allowed" disabled>
-                          ⏳ Chờ Gán Drone
-                        </Button>
+                        <div className="space-y-2">
+                          <Button className="w-full bg-gray-400 cursor-not-allowed" disabled>
+                            ⏳ Chờ Admin Gán Drone
+                          </Button>
+                          <p className="text-xs text-muted-foreground text-center">
+                            Vui lòng liên hệ quản trị viên để gán drone cho đơn hàng này
+                          </p>
+                        </div>
                       );
                     })()}
                   </CardContent>
@@ -385,7 +471,7 @@ export function OrderPage() {
                     </div>
                     <p className="text-sm text-foreground mb-3">
                       <span className="font-semibold">Món:</span>{' '}
-                      {order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}
+                      {order.items.map(item => `${item.productName} x${item.quantity}`).join(', ')}
                     </p>
                     <p className="text-lg font-bold text-primary mb-4">
                       Tổng: {order.totalPrice.toLocaleString("vi-VN")}đ
@@ -429,7 +515,7 @@ export function OrderPage() {
                     </div>
                     <p className="text-sm text-foreground mb-3">
                       <span className="font-semibold">Món:</span>{' '}
-                      {order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}
+                      {order.items.map(item => `${item.productName} x${item.quantity}`).join(', ')}
                     </p>
                     <p className="text-lg font-bold text-primary">
                       Tổng: {order.totalPrice.toLocaleString("vi-VN")}đ

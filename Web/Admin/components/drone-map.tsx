@@ -69,7 +69,14 @@ export default function DroneMap({ drones, followDroneId, selectedDroneId, onDro
   const pathsRef = useRef<Map<string, L.Polyline>>(new Map())
 
     useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return
+    if (!mapContainerRef.current) return
+    
+    // Check if map already exists in the container
+    if (mapRef.current) return
+    if ((mapContainerRef.current as any).hasChildNodes && mapContainerRef.current.children.length > 0) {
+      // Map already initialized, just update markers
+      return
+    }
 
     // TẢI leaflet-rotatedmarker TỪ CDN
     const script = document.createElement("script")
@@ -78,34 +85,43 @@ export default function DroneMap({ drones, followDroneId, selectedDroneId, onDro
     document.body.appendChild(script)
 
     script.onload = () => {
-      const map = L.map(mapContainerRef.current!, {
-        center: [21.0285, 105.8542],
-        zoom: 13,
-      })
+      // Check again if already initialized (race condition)
+      if (mapRef.current) {
+        script.remove()
+        return
+      }
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; OpenStreetMap contributors',
-      }).addTo(map)
+      try {
+        const map = L.map(mapContainerRef.current!, {
+          center: [21.0285, 105.8542],
+          zoom: 13,
+        })
 
-      // Enable rotation cho tất cả marker
-      ;(L.Marker.prototype as any).setRotationAngle = function (angle: number) {
-        this.options.rotationAngle = angle
-        if (this._icon) {
-          this._icon.style.transform += ` rotate(${angle}deg)`
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '&copy; OpenStreetMap contributors',
+        }).addTo(map)
+
+        // Enable rotation cho tất cả marker
+        ;(L.Marker.prototype as any).setRotationAngle = function (angle: number) {
+          this.options.rotationAngle = angle
+          if (this._icon) {
+            this._icon.style.transform += ` rotate(${angle}deg)`
+          }
+          return this
         }
-        return this
-      }
-      ;(L.Marker.prototype as any).setRotationOrigin = function () {
-        return this
-      }
+        ;(L.Marker.prototype as any).setRotationOrigin = function () {
+          return this
+        }
 
-      mapRef.current = map
+        mapRef.current = map
+      } catch (error) {
+        console.error("Error initializing map:", error)
+      }
     }
 
     return () => {
       script.remove()
-      mapRef.current?.remove()
-      mapRef.current = null
+      // Don't remove map in cleanup to prevent re-initialization issues
     }
   }, [])
 

@@ -13,6 +13,7 @@ import cartRoutes from './routes/cartRoutes';
 import orderRoutes from './routes/orderRoutes';
 import droneRoutes from './routes/droneRoutes';
 import deliveryRoutes from './routes/deliveryRoutes';
+import locationRoutes from './routes/locationRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import routeRoutes from './routes/route.routes';
 
@@ -48,6 +49,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/drones', droneRoutes);
 app.use('/api/deliveries', deliveryRoutes);
+app.use('/api/locations', locationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/routes', routeRoutes);
 

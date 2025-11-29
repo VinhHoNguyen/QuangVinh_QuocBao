@@ -99,10 +99,8 @@ export const createOrder = async (
       });
     }
 
-    // Find available drone
-    const availableDrone = await DroneModel.findOne({ status: DroneStatus.AVAILABLE });
-
-    // Always create delivery record (even if no drone available yet)
+    // Create delivery record WITHOUT auto-assigning drone
+    // Admin will assign drone later from assignment page
     const deliveryData: any = {
       orderId: newOrder._id,
       pickupLocationId: restaurantLocation._id,
@@ -111,18 +109,7 @@ export const createOrder = async (
       estimatedTime: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
     };
 
-    // Only add droneId if drone is available
-    if (availableDrone) {
-      deliveryData.droneId = availableDrone._id;
-    }
-
     await DeliveryModel.create(deliveryData);
-
-    // Update drone status if available
-    if (availableDrone) {
-      availableDrone.status = DroneStatus.IN_TRANSIT;
-      await availableDrone.save();
-    }
 
     res.status(201).json({
       success: true,
@@ -272,6 +259,50 @@ export const getUserOrders = async (
   }
 };
 
+// Assign drone to delivery
+export const assignDroneToDelivery = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user) {
+      throw new AppError(ERROR_MESSAGES.UNAUTHORIZED, 401);
+    }
+
+    const { orderId, droneId } = req.body;
+
+    const delivery = await DeliveryModel.findOne({ orderId });
+    if (!delivery) {
+      throw new AppError('Delivery not found', 404);
+    }
+
+    const drone = await DroneModel.findById(droneId);
+    if (!drone) {
+      throw new AppError('Drone not found', 404);
+    }
+
+    if (drone.status !== DroneStatus.AVAILABLE) {
+      throw new AppError('Drone is not available', 400);
+    }
+
+    delivery.droneId = droneId;
+    delivery.status = DeliveryStatus.ASSIGNED;
+    await delivery.save();
+
+    drone.status = DroneStatus.IN_TRANSIT;
+    await drone.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Drone assigned successfully',
+      data: delivery,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Update order status
 export const updateOrderStatus = async (
   req: AuthRequest,
@@ -299,7 +330,7 @@ export const updateOrderStatus = async (
         throw new AppError('Delivery record not found', 404);
       }
       if (!delivery.droneId) {
-        throw new AppError('Cannot start delivery: No drone assigned. Please contact admin.', 400);
+        throw new AppError('Vui lòng gán drone trước khi bắt đầu giao hàng (Assign Drone first)', 400);
       }
     }
 

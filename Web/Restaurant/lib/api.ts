@@ -47,25 +47,24 @@ export interface Order {
   userId: string;
   restaurantId: string;
   items: OrderItem[];
-  totalAmount: number;
+  totalPrice: number;
   status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivering' | 'delivered' | 'completed' | 'cancelled';
-  deliveryMethod: 'drone' | 'bike' | 'car';
+  deliveryMethod?: 'drone' | 'bike' | 'car';
   paymentMethod: 'cash' | 'credit_card' | 'debit_card' | 'e_wallet' | 'bank_transfer';
-  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
+  paymentStatus: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded';
   shippingAddress: {
     street: string;
     district: string;
     city: string;
+    ward: string;
     coordinates?: {
       latitude: number;
       longitude: number;
     };
   };
-  customerName: string;
-  customerPhone: string;
+  customerName?: string;
+  customerPhone?: string;
   notes?: string;
-  estimatedDeliveryTime?: Date;
-  deliveryId?: string;
   createdAt: string;
   updatedAt: string;
 }

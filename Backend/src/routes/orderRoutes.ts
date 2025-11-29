@@ -7,6 +7,7 @@ import {
   updateOrderStatus,
   cancelOrder,
   getRestaurantOrders,
+  assignDroneToDelivery,
 } from '../controllers/orderController';
 import { authenticate, authorize } from '../middleware/auth';
 import { UserRole } from '../models/types';
@@ -29,6 +30,14 @@ router.patch(
   authenticate,
   authorize(UserRole.ADMIN, UserRole.RESTAURANT_OWNER),
   updateOrderStatus
+);
+
+// Assign drone to delivery - admin only
+router.post(
+  '/delivery/assign-drone',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  assignDroneToDelivery
 );
 
 // Cancel order - allow both patch and delete

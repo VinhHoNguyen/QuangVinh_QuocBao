@@ -149,7 +149,9 @@ export const assignDroneToDelivery = async (
     await delivery.save();
 
     // Update drone status to in_transit (assigned to delivery)
+    // Set drone's current location to pickup location (restaurant)
     drone.status = DroneStatus.IN_TRANSIT;
+    drone.currentLocationId = delivery.pickupLocationId;
     await drone.save();
 
 
@@ -177,26 +179,47 @@ export const updateDeliveryStatus = async (
     const { id } = req.params;
     const { status } = req.body;
 
+    console.log('📦 [updateDeliveryStatus] Called with:', { deliveryId: id, newStatus: status, statusType: typeof status });
+
     const delivery = await DeliveryModel.findById(id);
 
     if (!delivery) {
       throw new AppError('Delivery not found', 404);
     }
 
+    console.log('📦 [updateDeliveryStatus] Current delivery:', { 
+      id: delivery._id, 
+      orderId: delivery.orderId,
+      droneId: delivery.droneId,
+      currentStatus: delivery.status 
+    });
+
     delivery.status = status;
 
     // If delivered, set actual time and free up the drone
+    console.log('🔍 [updateDeliveryStatus] Checking if status is delivered:', { status, isDelivered: status === 'delivered' });
+    
     if (status === 'delivered') {
+      console.log('✅ [updateDeliveryStatus] Status is DELIVERED - freeing up drone:', delivery.droneId);
       delivery.actualTime = new Date();
 
       // Free up the drone - set status back to available
       if (delivery.droneId) {
+        console.log('🚁 [updateDeliveryStatus] Found droneId, looking up drone...');
         const drone = await DroneModel.findById(delivery.droneId);
         if (drone) {
+          console.log('🚁 [updateDeliveryStatus] Drone status BEFORE:', drone.status);
           drone.status = DroneStatus.AVAILABLE;
           await drone.save();
+          console.log('🚁 [updateDeliveryStatus] Drone status AFTER:', drone.status);
+        } else {
+          console.log('❌ [updateDeliveryStatus] Drone not found!');
         }
+      } else {
+        console.log('⚠️ [updateDeliveryStatus] No droneId in delivery');
       }
+    } else {
+      console.log('⏭️ [updateDeliveryStatus] Status is NOT delivered, skipping drone update');
     }
 
     await delivery.save();
