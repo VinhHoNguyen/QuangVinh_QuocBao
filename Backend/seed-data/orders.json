@@ -53,7 +53,7 @@
     "totalPrice": 105000,
     "status": "delivering",
     "paymentMethod": "cash",
-    "paymentStatus": "pending",
+    "paymentStatus": "completed",
     "shippingAddress": {
       "street": "456 Nguyễn Huệ",
       "ward": "Phường Bến Nghé",
@@ -113,7 +113,7 @@
     "totalPrice": 40000,
     "status": "pending",
     "paymentMethod": "bank_transfer",
-    "paymentStatus": "pending",
+    "paymentStatus": "completed",
     "shippingAddress": {
       "street": "234 Võ Văn Tần",
       "ward": "Phường 5",

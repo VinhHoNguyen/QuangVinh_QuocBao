@@ -112,7 +112,7 @@ const seedAdditionalData = async () => {
         totalPrice: products[3].price * 3,
         status: OrderStatus.DELIVERING,
         paymentMethod: PaymentMethod.CASH,
-        paymentStatus: PaymentStatus.PENDING,
+        paymentStatus: PaymentStatus.COMPLETED,
         shippingAddress: {
           street: '456 Nguyễn Huệ',
           ward: 'Phường Bến Nghé',
@@ -174,7 +174,7 @@ const seedAdditionalData = async () => {
         totalPrice: products[2].price,
         status: OrderStatus.PENDING,
         paymentMethod: PaymentMethod.BANK_TRANSFER,
-        paymentStatus: PaymentStatus.PENDING,
+        paymentStatus: PaymentStatus.COMPLETED,
         shippingAddress: {
           street: '123 Lê Lợi',
           ward: 'Phường Bến Thành',

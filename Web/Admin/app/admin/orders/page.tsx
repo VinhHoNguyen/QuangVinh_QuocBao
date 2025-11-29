@@ -19,6 +19,13 @@ interface Order {
     _id: string
     name: string
     address: string
+    locationId?: {
+      coords: {
+        latitude: number
+        longitude: number
+      }
+      address: string
+    }
   }
   items: Array<{
     productId: string
@@ -143,56 +150,24 @@ export default function OrdersPage() {
   })
   const handleViewDetail = (order: Order) => {
     setSelectedOrder(order)
-    setShowDetail(true)
-    setRestaurantLocation(null) // Reset location
-    // Fetch restaurant location if order is drone delivery
-    if (order.deliveryMethod === 'drone' && order.restaurantId?._id) {
-      fetchRestaurantLocation(order.restaurantId._id)
-    }
-  }
-
-  const fetchRestaurantLocation = async (restaurantId: string) => {
-    try {
-      const token = localStorage.getItem("admin_token") || localStorage.getItem("token")
-      const response = await fetch(
-        `http://localhost:5000/api/restaurants/${restaurantId}`,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        }
-      )
-      if (response.ok) {
-        const data = await response.json()
-        const restaurant = data.data || data
-        console.log('Restaurant data:', restaurant)
-        if (restaurant.location?.coordinates) {
-          console.log('Restaurant location found:', restaurant.location.coordinates)
-          setRestaurantLocation({
-            latitude: restaurant.location.coordinates.latitude,
-            longitude: restaurant.location.coordinates.longitude,
-          })
-        } else {
-          console.log('No location in restaurant data, using fallback')
-          setRestaurantLocation({
-            latitude: 21.0285,
-            longitude: 105.8542,
-          })
-        }
-      } else {
-        console.log('Restaurant API response not ok:', response.status)
-        setRestaurantLocation({
-          latitude: 21.0285,
-          longitude: 105.8542,
-        })
-      }
-    } catch (error) {
-      console.error("Error fetching restaurant location:", error)
-      // Use default Hanoi coordinates as fallback
+    
+    // Get restaurant location from populated data
+    if (order.restaurantId?.locationId?.coords) {
+      setRestaurantLocation({
+        latitude: order.restaurantId.locationId.coords.latitude,
+        longitude: order.restaurantId.locationId.coords.longitude,
+      })
+    } else {
+      // Fallback to Hanoi coordinates if not available
       setRestaurantLocation({
         latitude: 21.0285,
         longitude: 105.8542,
       })
     }
+    
+    setShowDetail(true)
   }
+
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     try {
       const token = localStorage.getItem("admin_token") || localStorage.getItem("token")
@@ -237,6 +212,7 @@ export default function OrdersPage() {
       alert("Không thể hủy đơn hàng")
     }
   }
+
   const getOrderStats = () => {
     const today = new Date().toDateString()
     const todayOrders = orders.filter(
@@ -452,9 +428,9 @@ export default function OrdersPage() {
               </div>
 
               {/* Delivery Route Map */}
-              {selectedOrder.deliveryMethod === 'drone' && restaurantLocation ? (
+              {restaurantLocation ? (
                 <div>
-                  <h3 className="font-semibold text-foreground mb-3">Bản đồ đường đi giao hàng</h3>
+                  <h3 className="font-semibold text-foreground mb-3">🗺️ Bản đồ đường đi giao hàng</h3>
                   <DeliveryRouteMap
                     pickupLocation={{
                       name: selectedOrder.restaurantId?.name || "Nhà hàng",
@@ -473,11 +449,11 @@ export default function OrdersPage() {
                     height="400px"
                   />
                 </div>
-              ) : selectedOrder.deliveryMethod === 'drone' ? (
-                <div className="bg-muted p-4 rounded-lg text-center text-muted-foreground">
-                  Đang tải bản đồ...
+              ) : (
+                <div className="bg-muted p-6 rounded-lg text-center">
+                  <p className="text-muted-foreground animate-pulse">⏳ Đang tải bản đồ đường đi...</p>
                 </div>
-              ) : null}
+              )}
 
               {/* Payment & Delivery Info */}
               <div className="grid grid-cols-3 gap-4">

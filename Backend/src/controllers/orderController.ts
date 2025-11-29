@@ -145,6 +145,15 @@ export const getAllOrders = async (
     }
 
     const orders = await OrderModel.find(filter)
+      .populate('userId', 'name email phone')
+      .populate({
+        path: 'restaurantId',
+        select: 'name address locationId',
+        populate: {
+          path: 'locationId',
+          select: 'coords address'
+        }
+      })
       .sort({ createdAt: -1 });
 
     // Transform orders to ensure productName is available
@@ -193,7 +202,16 @@ export const getOrderById = async (
   try {
     const { id } = req.params;
 
-    const order = await OrderModel.findById(id);
+    const order = await OrderModel.findById(id)
+      .populate('userId', 'name email phone')
+      .populate({
+        path: 'restaurantId',
+        select: 'name address locationId',
+        populate: {
+          path: 'locationId',
+          select: 'coords address'
+        }
+      });
 
     if (!order) {
       throw new AppError(ERROR_MESSAGES.ORDER_NOT_FOUND, 404);
@@ -220,6 +238,15 @@ export const getUserOrders = async (
     }
 
     const orders = await OrderModel.find({ userId: req.user._id })
+      .populate('userId', 'name email phone')
+      .populate({
+        path: 'restaurantId',
+        select: 'name address locationId',
+        populate: {
+          path: 'locationId',
+          select: 'coords address'
+        }
+      })
       .sort({ createdAt: -1 });
 
     // Transform orders to ensure productName is available
@@ -397,6 +424,15 @@ export const getRestaurantOrders = async (
     const { id } = req.params; // restaurantId
 
     const orders = await OrderModel.find({ restaurantId: id })
+      .populate('userId', 'name email phone')
+      .populate({
+        path: 'restaurantId',
+        select: 'name address locationId',
+        populate: {
+          path: 'locationId',
+          select: 'coords address'
+        }
+      })
       .sort({ createdAt: -1 });
 
     // Transform orders to ensure productName is available
