@@ -13,50 +13,60 @@ import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
 import { Colors } from '../constants/Colors';
-
+import { geocodeAddress, getDefaultCoordinates } from '../services/geocoding';
 export default function CheckoutScreen({ navigation }: any) {
   const { cart, user, clearCart } = useApp();
-
   // Thông tin người nhận
   const [fullName, setFullName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [email, setEmail] = useState(user?.email || '');
   const [address, setAddress] = useState(user?.address || '');
-
   // Hình thức vận chuyển
   const [deliveryType, setDeliveryType] = useState<'standard' | 'drone'>('standard');
-
   // Hình thức thanh toán
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online' | 'transfer'>('cash');
-
   const [loading, setLoading] = useState(false);
-
   // Tính toán
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const deliveryFee = deliveryType === 'drone' ? 35000 : 20000;
   const total = subtotal + deliveryFee;
-
   const handleCheckout = async () => {
     if (!fullName.trim()) return Alert.alert('Lỗi', 'Vui lòng nhập tên người nhận');
     if (!phone.trim()) return Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại');
     if (!email.trim()) return Alert.alert('Lỗi', 'Vui lòng nhập email');
     if (!address.trim()) return Alert.alert('Lỗi', 'Vui lòng nhập địa chỉ giao hàng');
     if (cart.length === 0) return Alert.alert('Lỗi', 'Giỏ hàng trống!');
-
-    // Online payment minimum 500k
-    if (paymentMethod === 'online' && total < 500000) {
-      return Alert.alert('Lỗi', 'Thanh toán online yêu cầu tối thiểu 500.000đ');
+    // Online payment minimum 50k
+    if (paymentMethod === 'online' && total < 50000) {
+      return Alert.alert('Lỗi', 'Thanh toán online yêu cầu tối thiểu 50.000đ');
     }
-
     try {
       setLoading(true);
-
       // Parse address into components
       const addressParts = address.split(',').map(s => s.trim());
       const street = addressParts[0] || address;
-      const ward = addressParts[1] || 'Phường 1';
-      const district = addressParts[2] || 'Quận 1';
-      const city = addressParts[3] || 'TP. Hồ Chí Minh';
+      const ward = addressParts[1] || 'N/A';
+      const district = addressParts[2] || 'N/A';
+      const city = addressParts[3] || 'N/A';
+      // 🗺️ GEOCODE ADDRESS TO GET REAL COORDINATES
+      console.log('🗺️ Geocoding address:', address);
+      const geocoded = await geocodeAddress(address);
+
+      let deliveryCoordinates;
+      if (geocoded) {
+        console.log('✅ Geocoded!', geocoded);
+        deliveryCoordinates = {
+          latitude: geocoded.latitude,
+          longitude: geocoded.longitude,
+        };
+      } else {
+        console.warn('⚠️ Using default');
+        const fallback = getDefaultCoordinates();
+        deliveryCoordinates = {
+          latitude: fallback.latitude,
+          longitude: fallback.longitude,
+        };
+      }
 
       // Prepare order data for API
       const orderData = {
@@ -73,16 +83,11 @@ export default function CheckoutScreen({ navigation }: any) {
           ward,
           district,
           city,
-          coordinates: {
-            latitude: 10.762622 + (Math.random() - 0.5) * 0.01,
-            longitude: 106.660172 + (Math.random() - 0.5) * 0.01,
-          },
+          coordinates: deliveryCoordinates, // ✅ Real coordinates!
         },
       };
-
       // GỌI API ĐỂ TẠO ĐƠN HÀNG
       await apiService.createOrder(orderData);
-
       clearCart();
       Alert.alert('Thành công!', 'Đơn hàng đã được đặt!', [
         {
@@ -101,7 +106,6 @@ export default function CheckoutScreen({ navigation }: any) {
       setLoading(false);
     }
   };
-
   return (
     <ScrollView style={styles.container}>
       {/* HEADER */}
@@ -112,7 +116,6 @@ export default function CheckoutScreen({ navigation }: any) {
         <Text style={styles.headerTitle}>Thanh toán</Text>
         <View style={{ width: 28 }} />
       </View>
-
       {/* THÔNG TIN NGƯỜI NHẬN */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Thông tin người nhận</Text>
@@ -123,7 +126,6 @@ export default function CheckoutScreen({ navigation }: any) {
         </View>
         <TextInput style={styles.input} placeholder="Địa chỉ giao hàng" value={address} onChangeText={setAddress} multiline />
       </View>
-
       {/* VẬN CHUYỂN */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Hình thức vận chuyển</Text>
@@ -139,7 +141,6 @@ export default function CheckoutScreen({ navigation }: any) {
             <Text style={styles.optionDesc}>15-20 phút • +35.000đ</Text>
           </View>
         </TouchableOpacity>
-
         <TouchableOpacity
           style={[styles.option, deliveryType === 'standard' && styles.selected]}
           onPress={() => setDeliveryType('standard')}
@@ -153,11 +154,9 @@ export default function CheckoutScreen({ navigation }: any) {
           </View>
         </TouchableOpacity>
       </View>
-
       {/* THANH TOÁN */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Hình thức thanh toán</Text>
-
         <TouchableOpacity
           style={[styles.option, paymentMethod === 'online' && styles.selected, total < 500000 && styles.disabled]}
           onPress={() => total >= 500000 && setPaymentMethod('online')}
@@ -172,7 +171,6 @@ export default function CheckoutScreen({ navigation }: any) {
             {total < 500000 && <Text style={styles.warning}>Tối thiểu 500.000đ</Text>}
           </View>
         </TouchableOpacity>
-
         <TouchableOpacity
           style={[styles.option, paymentMethod === 'cash' && styles.selected]}
           onPress={() => setPaymentMethod('cash')}
@@ -182,7 +180,6 @@ export default function CheckoutScreen({ navigation }: any) {
           </View>
           <Text style={styles.optionTitle}>Tiền mặt khi nhận hàng</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
           style={[styles.option, paymentMethod === 'transfer' && styles.selected]}
           onPress={() => setPaymentMethod('transfer')}
@@ -193,7 +190,6 @@ export default function CheckoutScreen({ navigation }: any) {
           <Text style={styles.optionTitle}>Chuyển khoản ngân hàng</Text>
         </TouchableOpacity>
       </View>
-
       {/* HÓA ĐƠN */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Hóa đơn</Text>
@@ -218,7 +214,6 @@ export default function CheckoutScreen({ navigation }: any) {
           <Text style={styles.totalValue}>{total.toLocaleString()}đ</Text>
         </View>
       </View>
-
       {/* NÚT ĐẶT HÀNG */}
       <TouchableOpacity
         style={[styles.checkoutBtn, loading && { opacity: 0.6 }]}
@@ -229,12 +224,10 @@ export default function CheckoutScreen({ navigation }: any) {
           {loading ? 'Đang xử lý...' : 'Đặt hàng'}
         </Text>
       </TouchableOpacity>
-
       <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: '#fff' },
@@ -260,4 +253,4 @@ const styles = StyleSheet.create({
   totalValue: { fontSize: 20, fontWeight: 'bold', color: Colors.primary },
   checkoutBtn: { backgroundColor: Colors.primary, marginHorizontal: 16, marginVertical: 20, padding: 16, borderRadius: 12, alignItems: 'center' },
   checkoutBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
-});
+}); 

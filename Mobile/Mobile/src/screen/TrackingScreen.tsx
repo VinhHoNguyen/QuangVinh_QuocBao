@@ -187,18 +187,18 @@ export default function TrackingScreen({ route, navigation }: any) {
                   <Ionicons name="location" size={24} color="#FF6347" />
                 </View>
               </Marker>
-              {droneLocation && (
-                <Polyline
-                  coordinates={[
-                    restaurantLocation,
-                    currentDroneLocation,
-                    customerLocation,
-                  ]}
-                  strokeColor={Colors.primary}
-                  strokeWidth={3}
-                  lineDashPattern={[10, 5]}
-                />
-              )}
+
+              <Polyline
+                coordinates={[
+                  restaurantLocation,
+                  currentDroneLocation,
+                  customerLocation,
+                ]}
+                strokeColor={Colors.primary}
+                strokeWidth={3}
+                lineDashPattern={[10, 5]}
+              />
+
             </MapView>
             {delivery && order.status === 'delivering' && (
               <View style={styles.droneInfoOverlay}>
