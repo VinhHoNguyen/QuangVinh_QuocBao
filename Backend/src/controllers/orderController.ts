@@ -73,7 +73,7 @@ export const createOrder = async (
       totalPrice,
       status: OrderStatus.PENDING,
       paymentMethod,
-      paymentStatus: PaymentStatus.PENDING,
+      paymentStatus: PaymentStatus.COMPLETED,
       shippingAddress,
     });
 
