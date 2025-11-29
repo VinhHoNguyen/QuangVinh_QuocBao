@@ -85,6 +85,30 @@ npm run dev
 
 Frontend sẽ chạy tại: http://localhost:3000
 
+### 8. Cấu hình Mobile App (Quan trọng!)
+
+**Mobile app cần cấu hình IP động để chạy trên nhiều mạng khác nhau:**
+
+```bash
+cd Backend
+npm run setup:mobile
+```
+
+**Kết quả:**
+```
+✅ Mobile app configuration updated!
+=================================
+📱 API URL: http://192.168.x.x:5000/api
+📍 Network IP: 192.168.x.x
+=================================
+```
+
+**Lưu ý:**
+- Chạy lệnh này MỖI KHI đổi mạng WiFi
+- Đảm bảo máy tính và điện thoại cùng mạng WiFi
+- Backend server sẽ tự động hiển thị Network IP khi khởi động
+
+
 ## 🎯 Kiểm Tra Hoạt Động
 
 ### Backend API Endpoints

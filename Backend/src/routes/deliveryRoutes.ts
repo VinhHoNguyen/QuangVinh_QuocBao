@@ -14,6 +14,7 @@ const router = Router();
 router.get('/', authenticate, getAllDeliveries);
 router.get('/:id', authenticate, getDeliveryById);
 router.get('/track/:orderId', authenticate, trackDelivery);
+router.get('/order/:orderId', authenticate, trackDelivery); // Alias for mobile app
 
 // Update delivery status - admin and delivery
 router.put(

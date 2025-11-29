@@ -84,27 +84,42 @@ export const createOrder = async (
       address: `${shippingAddress.street}, ${shippingAddress.ward}, ${shippingAddress.district}, ${shippingAddress.city}`,
     });
 
-    // Get restaurant location
-    const restaurantLocation = await LocationModel.findOne({ 
+    // Get restaurant location or create a default one
+    let restaurantLocation = await LocationModel.findOne({
       type: LocationType.RESTAURANT,
-      address: restaurant.address 
+      address: restaurant.address
     });
+
+    // If restaurant location doesn't exist, create one with default coordinates
+    if (!restaurantLocation) {
+      restaurantLocation = await LocationModel.create({
+        type: LocationType.RESTAURANT,
+        coords: { latitude: 10.762622, longitude: 106.660172 }, // Default Saigon coordinates
+        address: restaurant.address,
+      });
+    }
 
     // Find available drone
     const availableDrone = await DroneModel.findOne({ status: DroneStatus.AVAILABLE });
 
-    if (availableDrone && restaurantLocation) {
-      // Create delivery
-      await DeliveryModel.create({
-        orderId: newOrder._id,
-        droneId: availableDrone._id,
-        pickupLocationId: restaurantLocation._id,
-        dropoffLocationId: deliveryLocation._id,
-        status: DeliveryStatus.ASSIGNED,
-        estimatedTime: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
-      });
+    // Always create delivery record (even if no drone available yet)
+    const deliveryData: any = {
+      orderId: newOrder._id,
+      pickupLocationId: restaurantLocation._id,
+      dropoffLocationId: deliveryLocation._id,
+      status: DeliveryStatus.ASSIGNED, // Will be updated when drone picks up
+      estimatedTime: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
+    };
 
-      // Update drone status to in_transit
+    // Only add droneId if drone is available
+    if (availableDrone) {
+      deliveryData.droneId = availableDrone._id;
+    }
+
+    await DeliveryModel.create(deliveryData);
+
+    // Update drone status if available
+    if (availableDrone) {
       availableDrone.status = DroneStatus.IN_TRANSIT;
       await availableDrone.save();
     }
@@ -148,7 +163,7 @@ export const getAllOrders = async (
     // Transform orders to ensure productName is available
     const transformedOrders = await Promise.all(orders.map(async (order) => {
       const orderObj = order.toObject();
-      
+
       orderObj.items = await Promise.all(orderObj.items.map(async (item: any) => {
         if (!item.productName && item.productId) {
           try {
@@ -169,7 +184,7 @@ export const getAllOrders = async (
           productName: item.productName || 'Sản phẩm không xác định'
         };
       }));
-      
+
       return orderObj;
     }));
 
@@ -223,7 +238,7 @@ export const getUserOrders = async (
     // Transform orders to ensure productName is available
     const transformedOrders = await Promise.all(orders.map(async (order) => {
       const orderObj = order.toObject();
-      
+
       orderObj.items = await Promise.all(orderObj.items.map(async (item: any) => {
         if (!item.productName && item.productId) {
           try {
@@ -244,7 +259,7 @@ export const getUserOrders = async (
           productName: item.productName || 'Sản phẩm không xác định'
         };
       }));
-      
+
       return orderObj;
     }));
 
@@ -345,7 +360,7 @@ export const getRestaurantOrders = async (
     // Transform orders to ensure productName is available
     const transformedOrders = await Promise.all(orders.map(async (order) => {
       const orderObj = order.toObject();
-      
+
       // For each item, if productName is missing, fetch it from Product collection
       orderObj.items = await Promise.all(orderObj.items.map(async (item: any) => {
         if (!item.productName && item.productId) {
@@ -367,7 +382,7 @@ export const getRestaurantOrders = async (
           productName: item.productName || 'Sản phẩm không xác định'
         };
       }));
-      
+
       return orderObj;
     }));
 

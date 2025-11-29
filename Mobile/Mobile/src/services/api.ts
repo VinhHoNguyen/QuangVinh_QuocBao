@@ -1,8 +1,10 @@
 // src/services/api.ts
 import axios, { AxiosInstance } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_CONFIG } from '../config/api.config';
 
-const API_URL = 'http://192.168.1.96:5000/api';
+const API_URL = API_CONFIG.BASE_URL;
+
 
 class ApiService {
   private api: AxiosInstance;
@@ -171,6 +173,17 @@ class ApiService {
 
   async getDeliveryByOrderId(orderId: string) {
     const response = await this.api.get(`/deliveries/order/${orderId}`);
+    return response.data;
+  }
+
+  // ============ ROUTES ============
+  async getDirections(origin: { lat: number; lng: number }, destination: { lat: number; lng: number }) {
+    const response = await this.api.get('/routes/directions', {
+      params: {
+        origin: `${origin.lat},${origin.lng}`,
+        destination: `${destination.lat},${destination.lng}`,
+      },
+    });
     return response.data;
   }
 

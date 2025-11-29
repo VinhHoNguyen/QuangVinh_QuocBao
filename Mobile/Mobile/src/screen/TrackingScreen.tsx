@@ -13,41 +13,31 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '../services/api';
 import { Colors } from '../constants/Colors';
-
 const { width, height } = Dimensions.get('window');
-
 interface DroneLocation {
   latitude: number;
   longitude: number;
 }
-
 export default function TrackingScreen({ route, navigation }: any) {
   const { orderId } = route.params;
   const mapRef = useRef<MapView>(null);
-
   const [order, setOrder] = useState<any>(null);
   const [delivery, setDelivery] = useState<any>(null);
   const [droneLocation, setDroneLocation] = useState<DroneLocation | null>(null);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     loadOrderDetails();
-    const interval = setInterval(updateDroneLocation, 3000); // Update every 3 seconds
+    const interval = setInterval(updateDroneLocation, 3000);
     return () => clearInterval(interval);
   }, [orderId]);
-
   const loadOrderDetails = async () => {
     try {
       setLoading(true);
       const orderResponse = await apiService.getOrderById(orderId);
       setOrder(orderResponse.data);
-
-      // Try to get delivery info
       try {
         const deliveryResponse = await apiService.getDeliveryByOrderId(orderId);
         setDelivery(deliveryResponse.data);
-
-        // Initialize drone location if available
         if (deliveryResponse.data?.drone?.currentLocation) {
           setDroneLocation({
             latitude: deliveryResponse.data.drone.currentLocation.latitude,
@@ -63,10 +53,8 @@ export default function TrackingScreen({ route, navigation }: any) {
       setLoading(false);
     }
   };
-
   const updateDroneLocation = async () => {
     if (!orderId) return;
-
     try {
       const deliveryResponse = await apiService.getDeliveryByOrderId(orderId);
       if (deliveryResponse.data?.drone?.currentLocation) {
@@ -81,7 +69,6 @@ export default function TrackingScreen({ route, navigation }: any) {
       console.log('Update drone location error:', error);
     }
   };
-
   const getStatusSteps = () => {
     const steps = [
       { key: 'pending', label: 'Chờ xác nhận', icon: 'time-outline' },
@@ -90,19 +77,19 @@ export default function TrackingScreen({ route, navigation }: any) {
       { key: 'delivering', label: 'Đang giao hàng', icon: 'airplane-outline' },
       { key: 'delivered', label: 'Đã giao', icon: 'checkmark-done-circle' },
     ];
-
-    const currentIndex = steps.findIndex(s => s.key === order?.status);
-
+    let mobileStatus = order?.status;
+    if (mobileStatus === 'completed') {
+      mobileStatus = 'delivered';
+    }
+    const currentIndex = steps.findIndex(s => s.key === mobileStatus);
     return steps.map((step, index) => ({
       ...step,
       completed: index <= currentIndex,
       active: index === currentIndex,
     }));
   };
-
   const fitMapToMarkers = () => {
     if (!droneLocation || !order?.shippingAddress?.coordinates) return;
-
     const coordinates = [
       {
         latitude: droneLocation.latitude,
@@ -113,19 +100,16 @@ export default function TrackingScreen({ route, navigation }: any) {
         longitude: order.shippingAddress.coordinates.longitude,
       },
     ];
-
     mapRef.current?.fitToCoordinates(coordinates, {
       edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
       animated: true,
     });
   };
-
   useEffect(() => {
     if (droneLocation && order) {
       fitMapToMarkers();
     }
   }, [droneLocation, order]);
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -133,7 +117,6 @@ export default function TrackingScreen({ route, navigation }: any) {
       </View>
     );
   }
-
   if (!order) {
     return (
       <View style={styles.errorContainer}>
@@ -141,22 +124,17 @@ export default function TrackingScreen({ route, navigation }: any) {
       </View>
     );
   }
-
   const restaurantLocation = delivery?.pickupLocation?.coords || {
     latitude: 10.762622,
     longitude: 106.660172,
   };
-
   const customerLocation = order.shippingAddress?.coordinates || {
     latitude: 10.772622,
     longitude: 106.670172,
   };
-
   const currentDroneLocation = droneLocation || restaurantLocation;
-
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#333" />
@@ -166,9 +144,7 @@ export default function TrackingScreen({ route, navigation }: any) {
           <Ionicons name="refresh" size={24} color="#333" />
         </TouchableOpacity>
       </View>
-
       <ScrollView style={styles.content}>
-        {/* Map */}
         {order && (
           <View style={styles.mapContainer}>
             <MapView
@@ -182,7 +158,6 @@ export default function TrackingScreen({ route, navigation }: any) {
                 longitudeDelta: 0.05,
               }}
             >
-              {/* Restaurant Marker */}
               <Marker
                 coordinate={restaurantLocation}
                 title="Nhà hàng"
@@ -192,8 +167,6 @@ export default function TrackingScreen({ route, navigation }: any) {
                   <Ionicons name="restaurant" size={24} color={Colors.primary} />
                 </View>
               </Marker>
-
-              {/* Drone Marker */}
               {droneLocation && (
                 <Marker
                   coordinate={currentDroneLocation}
@@ -205,8 +178,6 @@ export default function TrackingScreen({ route, navigation }: any) {
                   </View>
                 </Marker>
               )}
-
-              {/* Customer Marker */}
               <Marker
                 coordinate={customerLocation}
                 title="Điểm giao hàng"
@@ -216,8 +187,6 @@ export default function TrackingScreen({ route, navigation }: any) {
                   <Ionicons name="location" size={24} color="#FF6347" />
                 </View>
               </Marker>
-
-              {/* Route Line */}
               {droneLocation && (
                 <Polyline
                   coordinates={[
@@ -231,9 +200,7 @@ export default function TrackingScreen({ route, navigation }: any) {
                 />
               )}
             </MapView>
-
-            {/* Drone Info Overlay */}
-            {delivery && (
+            {delivery && order.status === 'delivering' && (
               <View style={styles.droneInfoOverlay}>
                 <Ionicons name="airplane" size={20} color={Colors.primary} />
                 <Text style={styles.droneInfoText}>
@@ -243,8 +210,6 @@ export default function TrackingScreen({ route, navigation }: any) {
             )}
           </View>
         )}
-
-        {/* Order Status Timeline */}
         <View style={styles.timelineContainer}>
           <Text style={styles.sectionTitle}>Trạng thái đơn hàng</Text>
           {getStatusSteps().map((step, index) => (
@@ -280,32 +245,25 @@ export default function TrackingScreen({ route, navigation }: any) {
             </View>
           ))}
         </View>
-
-        {/* Order Details */}
         <View style={styles.detailsContainer}>
           <Text style={styles.sectionTitle}>Thông tin đơn hàng</Text>
-
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Mã đơn hàng:</Text>
             <Text style={styles.detailValue}>#{order._id.slice(-8).toUpperCase()}</Text>
           </View>
-
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Nhà hàng:</Text>
             <Text style={styles.detailValue}>
               {typeof order.restaurantId === 'object' ? order.restaurantId.name : 'Nhà hàng'}
             </Text>
           </View>
-
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Thời gian đặt:</Text>
             <Text style={styles.detailValue}>
               {new Date(order.createdAt).toLocaleString('vi-VN')}
             </Text>
           </View>
-
           <View style={styles.divider} />
-
           <Text style={styles.itemsTitle}>Món ăn:</Text>
           {order.items.map((item: any, index: number) => (
             <View key={index} style={styles.itemRow}>
@@ -314,16 +272,12 @@ export default function TrackingScreen({ route, navigation }: any) {
               <Text style={styles.itemPrice}>{(item.price * item.quantity).toLocaleString()}đ</Text>
             </View>
           ))}
-
           <View style={styles.divider} />
-
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Tổng cộng:</Text>
             <Text style={styles.totalValue}>{order.totalPrice.toLocaleString()}đ</Text>
           </View>
         </View>
-
-        {/* Delivery Address */}
         <View style={styles.addressContainer}>
           <Text style={styles.sectionTitle}>Địa chỉ giao hàng</Text>
           <View style={styles.addressContent}>
@@ -334,13 +288,11 @@ export default function TrackingScreen({ route, navigation }: any) {
             </Text>
           </View>
         </View>
-
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

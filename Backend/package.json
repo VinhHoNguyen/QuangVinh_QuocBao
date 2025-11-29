@@ -11,6 +11,8 @@
     "seed:all": "ts-node src/scripts/seed-all.ts",
     "seed:additional": "ts-node src/scripts/seed-additional.ts",
     "seed:firebase": "ts-node src/scripts/seed.ts",
+    "setup:mobile": "ts-node src/scripts/setup-mobile.ts",
+    "fix:orders": "ts-node src/scripts/fix-old-orders.ts",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"src/**/*.ts\""
   },
@@ -24,6 +26,7 @@
   "license": "MIT",
   "dependencies": {
     "@types/socket.io": "^3.0.1",
+    "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "compression": "^1.7.4",

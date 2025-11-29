@@ -82,15 +82,19 @@ export const trackDelivery = async (
     // Get drone info
     const drone = await DroneModel.findById(delivery.droneId);
 
-    // Get location info
-    const location = await LocationModel.findById(delivery.dropoffLocationId);
+    // Get pickup location info (restaurant)
+    const pickupLocation = await LocationModel.findById(delivery.pickupLocationId);
+
+    // Get dropoff location info (customer)
+    const dropoffLocation = await LocationModel.findById(delivery.dropoffLocationId);
 
     res.status(200).json({
       success: true,
       data: {
         ...delivery.toObject(),
         drone: drone ? drone.toObject() : null,
-        dropoffLocation: location ? location.toObject() : null,
+        pickupLocation: pickupLocation ? pickupLocation.toObject() : null,
+        dropoffLocation: dropoffLocation ? dropoffLocation.toObject() : null,
       },
     });
   } catch (error) {

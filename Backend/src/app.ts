@@ -14,6 +14,7 @@ import orderRoutes from './routes/orderRoutes';
 import droneRoutes from './routes/droneRoutes';
 import deliveryRoutes from './routes/deliveryRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
+import routeRoutes from './routes/route.routes';
 
 const app: Application = express();
 
@@ -48,6 +49,8 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/drones', droneRoutes);
 app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/routes', routeRoutes);
+
 
 // 404 handler
 app.use('*', (_req, res) => {
