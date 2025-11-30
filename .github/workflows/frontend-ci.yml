@@ -1,0 +1,97 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [ main, frontend, develop ]
+    paths:
+      - 'Web/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches: [ main, frontend, develop ]
+    paths:
+      - 'Web/**'
+
+jobs:
+  build-admin:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: 'npm'
+          cache-dependency-path: Web/Admin/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: Web/Admin
+        run: npm ci
+      
+      - name: Run linter
+        working-directory: Web/Admin
+        run: npm run lint --if-present
+        continue-on-error: true
+      
+      - name: Build
+        working-directory: Web/Admin
+        run: npm run build --if-present
+        continue-on-error: true
+
+  build-client:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: 'npm'
+          cache-dependency-path: Web/Client/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: Web/Client
+        run: npm ci
+      
+      - name: Run linter
+        working-directory: Web/Client
+        run: npm run lint --if-present
+        continue-on-error: true
+      
+      - name: Build
+        working-directory: Web/Client
+        run: npm run build --if-present
+        continue-on-error: true
+
+  build-restaurant:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: 'npm'
+          cache-dependency-path: Web/Restaurant/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: Web/Restaurant
+        run: npm ci
+      
+      - name: Run linter
+        working-directory: Web/Restaurant
+        run: npm run lint --if-present
+        continue-on-error: true
+      
+      - name: Build
+        working-directory: Web/Restaurant
+        run: npm run build --if-present
+        continue-on-error: true
