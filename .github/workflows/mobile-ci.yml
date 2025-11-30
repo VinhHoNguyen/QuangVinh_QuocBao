@@ -23,12 +23,10 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18.x
-          cache: 'npm'
-          cache-dependency-path: Mobile/Mobile/package-lock.json
       
       - name: Install dependencies
         working-directory: Mobile/Mobile
-        run: npm ci --prefer-offline --no-audit || true
+        run: npm install || true
       
       - name: Run linter
         working-directory: Mobile/Mobile
